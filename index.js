@@ -1157,6 +1157,7 @@ const reviewEmbed = new EmbedBuilder()
       await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
     }
     await interaction.reply({ embeds: [claimEmbed] });
+  }
   
   // ===== ORDER SELECT MENU =====
   if (
