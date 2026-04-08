@@ -261,13 +261,6 @@ client.on("guildMemberAdd", async member => {
 
   if (member.roles.cache.some(r => EXEMPT_ROLES.includes(r.id))) return;
   const accountAge = (Date.now() - member.user.createdTimestamp) / (1000 * 60 * 60 * 24);
-// DISABLED - young account kick is turned off
-// if (accountAge < MIN_ACCOUNT_AGE_DAYS) {
-//   await member.kick("Alt account detected (too new)").catch(() => {});
-//   member.guild.channels.cache.get(FULL_LOG_CHANNEL_ID)
-//     ?.send(`🚫 Kicked alt account: ${member.user.tag} (${accountAge.toFixed(1)} days old)`);
-//   return;
-// }
 
   await member.roles.add(UNVERIFIED_ROLE).catch(err => console.error("Failed to add unverified role:", err));
 
@@ -366,50 +359,56 @@ client.on("messageCreate", async message => {
     const isStatusStaff = message.member.roles.cache.has(STATUS_UPDATE_ROLE_ID);
     const isAllowedRename = isTicketStaff || isOrderStaff;
 
+    // Helper: auto-delete a reply after 5s (staff-only visibility simulation)
+    async function staffReply(content) {
+      const m = await message.reply(content);
+      setTimeout(() => m.delete().catch(() => {}), 5000);
+    }
+
     async function resolveUser(arg) {
-  if (!arg) return null;
-  const mentionMatch = arg.match(/^<@!?(\d+)>$/);
-  if (mentionMatch) return client.users.fetch(mentionMatch[1]).catch(() => null);
-  if (/^\d+$/.test(arg)) return client.users.fetch(arg).catch(() => null);
-  await message.guild.members.fetch(); // force full cache
-  const found = message.guild.members.cache.find(m =>
-    m.user.username.toLowerCase() === arg.toLowerCase() ||
-    m.displayName.toLowerCase() === arg.toLowerCase()
-  );
-  return found ? found.user : null;
-}
+      if (!arg) return null;
+      const mentionMatch = arg.match(/^<@!?(\d+)>$/);
+      if (mentionMatch) return client.users.fetch(mentionMatch[1]).catch(() => null);
+      if (/^\d+$/.test(arg)) return client.users.fetch(arg).catch(() => null);
+      await message.guild.members.fetch();
+      const found = message.guild.members.cache.find(m =>
+        m.user.username.toLowerCase() === arg.toLowerCase() ||
+        m.displayName.toLowerCase() === arg.toLowerCase()
+      );
+      return found ? found.user : null;
+    }
 
     async function resolveMember(arg) {
-  if (!arg) return null;
-  const mentionMatch = arg.match(/^<@!?(\d+)>$/);
-  const id = mentionMatch ? mentionMatch[1] : /^\d+$/.test(arg) ? arg : null;
-  if (id) return message.guild.members.fetch(id).catch(() => null);
-  await message.guild.members.fetch(); // force full cache
-  return message.guild.members.cache.find(m =>
-    m.user.username.toLowerCase() === arg.toLowerCase() ||
-    m.displayName.toLowerCase() === arg.toLowerCase()
-  ) || null;
-}
+      if (!arg) return null;
+      const mentionMatch = arg.match(/^<@!?(\d+)>$/);
+      const id = mentionMatch ? mentionMatch[1] : /^\d+$/.test(arg) ? arg : null;
+      if (id) return message.guild.members.fetch(id).catch(() => null);
+      await message.guild.members.fetch();
+      return message.guild.members.cache.find(m =>
+        m.user.username.toLowerCase() === arg.toLowerCase() ||
+        m.displayName.toLowerCase() === arg.toLowerCase()
+      ) || null;
+    }
 
     // -verify
     if (cmd === "verify") {
-      if (message.channel.id !== VERIFY_CHANNEL_ID) return message.reply("❌ Use this in the verify channel.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
-      if (!message.member.roles.cache.has(UNVERIFIED_ROLE)) return message.reply("❌ Already verified.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (message.channel.id !== VERIFY_CHANNEL_ID) return staffReply("❌ Use this in the verify channel.");
+      if (!message.member.roles.cache.has(UNVERIFIED_ROLE)) return staffReply("❌ Already verified.");
       await message.member.roles.remove(UNVERIFIED_ROLE);
       for (const role of VERIFIED_ROLES) await message.member.roles.add(role);
-      return message.reply("✅ Verified!").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      return staffReply("✅ Verified!");
     }
 
     // -promote @user @role reason
     if (cmd === "promote") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
       const roleMention = args[1];
       const reason = args.slice(2).join(" ") || "No reason provided";
-      if (!target) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!target) return staffReply("❌ User not found.");
       const roleMatch = roleMention?.match(/^<@&(\d+)>$/);
       const role = roleMatch ? message.guild.roles.cache.get(roleMatch[1]) : null;
-      if (!role) return message.reply("❌ Please mention a valid role.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!role) return staffReply("❌ Please mention a valid role.");
       await target.roles.add(role).catch(() => {});
       addLog(target.id, "Promotion", message.author.tag, reason);
       const embed = new EmbedBuilder()
@@ -419,20 +418,20 @@ client.on("messageCreate", async message => {
         .setColor("#f1c40f").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Promotion issued by ${message.author.tag}` }).setTimestamp();
       const logChannel = message.guild.channels.cache.get("1489097136929902624");
       if (logChannel) logChannel.send({ content: `${target}`, embeds: [embed] });
-      return message.reply("✅ Promotion sent.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      return staffReply("✅ Promotion sent.");
     }
 
     // -demote @user @newrole @removerole reason
     if (cmd === "demote") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
       const newRoleMatch = args[1]?.match(/^<@&(\d+)>$/);
       const removeRoleMatch = args[2]?.match(/^<@&(\d+)>$/);
       const reason = args.slice(3).join(" ") || "No reason provided";
-      if (!target) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!target) return staffReply("❌ User not found.");
       const demotedRole = newRoleMatch ? message.guild.roles.cache.get(newRoleMatch[1]) : null;
       const removeRole = removeRoleMatch ? message.guild.roles.cache.get(removeRoleMatch[1]) : null;
-      if (!demotedRole || !removeRole) return message.reply("❌ Please mention two valid roles.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!demotedRole || !removeRole) return staffReply("❌ Please mention two valid roles.");
       await target.roles.remove(removeRole).catch(() => {});
       await target.roles.add(demotedRole).catch(() => {});
       addLog(target.id, "Demotion", message.author.tag, reason);
@@ -442,73 +441,73 @@ client.on("messageCreate", async message => {
         .setColor("#2b2d31").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Demoted by ${message.author.tag}` }).setTimestamp();
       const logChannel = message.guild.channels.cache.get("1489097083029033060");
       if (logChannel) logChannel.send({ content: `${target}`, embeds: [embed] });
-      return message.reply("✅ Demotion sent.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      return staffReply("✅ Demotion sent.");
     }
 
     // -warn @user reason
     if (cmd === "warn") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
       const reason = args.slice(1).join(" ") || "No reason provided";
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!user) return staffReply("❌ User not found.");
       addLog(user.id, "Warning", message.author.tag, reason);
-      return message.reply(`⚠️ ${user.tag} warned.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      return staffReply(`⚠️ ${user.tag} warned.`);
     }
 
     // -logs @user
     if (cmd === "logs") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!user) return staffReply("❌ User not found.");
       const logs = playerLogs[user.id];
-      if (!logs || logs.length === 0) return message.reply("No logs found.");
-      return message.reply(logs.map(l => `• [${l.date}] ${l.type} | ${l.moderator} | ${l.reason}`).join("\n"));
+      if (!logs || logs.length === 0) return staffReply("No logs found.");
+      return staffReply(logs.map(l => `• [${l.date}] ${l.type} | ${l.moderator} | ${l.reason}`).join("\n"));
     }
 
     // -clearlogs @user
     if (cmd === "clearlogs") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!user) return staffReply("❌ User not found.");
       playerLogs[user.id] = [];
       saveLogs();
-      return message.reply("🧹 Logs cleared.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      return staffReply("🧹 Logs cleared.");
     }
 
     // -ban @user reason
     if (cmd === "ban") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
       const reason = args.slice(1).join(" ") || "No reason provided";
-      if (!target) return message.reply("❌ User not found in server.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!target) return staffReply("❌ User not found in server.");
       addLog(target.id, "Permanent Ban", message.author.tag, reason);
       await target.ban({ reason });
       const embed = new EmbedBuilder().setTitle(`${target.user.tag} | Ban`).setDescription(`Banned by ${message.author.tag}\nReason: ${reason}`).setColor(0xff0000).setTimestamp();
       message.guild.channels.cache.get(BAN_LOG_CHANNEL)?.send({ embeds: [embed] });
-      return message.reply(`${target.user.tag} banned.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      return staffReply(`${target.user.tag} banned.`);
     }
 
     // -tban @user hours reason
     if (cmd === "tban") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
       const hours = parseInt(args[1]);
       const reason = args.slice(2).join(" ") || "No reason provided";
-      if (!target) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
-      if (isNaN(hours)) return message.reply("❌ Please provide a valid number of hours.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!target) return staffReply("❌ User not found.");
+      if (isNaN(hours)) return staffReply("❌ Please provide a valid number of hours.");
       await target.ban({ reason: `${reason} (${hours}h)` });
       addLog(target.id, "Temp Ban", message.author.tag, reason);
       setTimeout(async () => { try { await message.guild.members.unban(target.id); } catch (err) {} }, hours * 60 * 60 * 1000);
-      return message.reply(`${target.user.tag} banned for ${hours} hours.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      return staffReply(`${target.user.tag} banned for ${hours} hours.`);
     }
 
     // -strike @user reason
     if (cmd === "strike") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
       const target = await resolveMember(args[0]);
       const reason = args.slice(1).join(" ") || "No reason provided";
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!user) return staffReply("❌ User not found.");
       if (!strikeData[user.id]) strikeData[user.id] = 0;
       strikeData[user.id] += 1;
       saveStrikes();
@@ -519,7 +518,7 @@ client.on("messageCreate", async message => {
         .setColor("#2b2d31").setThumbnail(user.displayAvatarURL()).setFooter({ text: `Strike issued by ${message.author.tag}` }).setTimestamp();
       const logChannel = message.guild.channels.cache.get("1489097083029033060");
       if (logChannel) logChannel.send({ content: `<@${user.id}>`, embeds: [embed] });
-      message.reply("✅ Strike issued.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      staffReply("✅ Strike issued.");
       if (strikes === 5 && target) {
         await target.ban({ reason: "5 Strikes - 48 Hour Temp Ban" }).catch(() => {});
         setTimeout(() => message.guild.members.unban(user.id).catch(() => {}), 48 * 60 * 60 * 1000);
@@ -529,113 +528,113 @@ client.on("messageCreate", async message => {
 
     // -clearstrikes @user
     if (cmd === "clearstrikes") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!user) return staffReply("❌ User not found.");
       strikeData[user.id] = 0;
       saveStrikes();
-      return message.reply(`✅ Cleared all strikes for ${user.tag}.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      return staffReply(`✅ Cleared all strikes for ${user.tag}.`);
     }
 
     // -strikes @user
     if (cmd === "strikes") {
       const user = await resolveUser(args[0]);
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
-      return message.reply(`${user.tag} has ${strikeData[user.id] || 0} strike(s).`);
+      if (!user) return staffReply("❌ User not found.");
+      return staffReply(`${user.tag} has ${strikeData[user.id] || 0} strike(s).`);
     }
 
     // -mute @user minutes
     if (cmd === "mute") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
       const minutes = parseInt(args[1]);
-      if (!target) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
-      if (isNaN(minutes)) return message.reply("❌ Please provide a valid number of minutes.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!target) return staffReply("❌ User not found.");
+      if (isNaN(minutes)) return staffReply("❌ Please provide a valid number of minutes.");
       await target.timeout(minutes * 60 * 1000);
-      return message.reply(`${target.user.tag} muted for ${minutes} minutes.`);
+      return staffReply(`${target.user.tag} muted for ${minutes} minutes.`);
     }
 
     // -slowmode seconds
     if (cmd === "slowmode") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const seconds = parseInt(args[0]);
-      if (isNaN(seconds)) return message.reply("❌ Please provide a valid number of seconds.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (isNaN(seconds)) return staffReply("❌ Please provide a valid number of seconds.");
       await message.channel.setRateLimitPerUser(seconds);
-      return message.reply(`Slowmode set to ${seconds} seconds.`);
+      return staffReply(`Slowmode set to ${seconds} seconds.`);
     }
 
     // -lockdown
     if (cmd === "lockdown") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       message.guild.channels.cache.forEach(channel => {
         if (channel.type === ChannelType.GuildText)
           channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: false }).catch(() => {});
       });
-      return message.reply("🔒 Server lockdown enabled.");
+      return staffReply("🔒 Server lockdown enabled.");
     }
 
     // -unlockdown
     if (cmd === "unlockdown") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       message.guild.channels.cache.forEach(channel => {
         if (channel.type === ChannelType.GuildText)
           channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: true }).catch(() => {});
       });
-      return message.reply("🔓 Server lockdown removed.");
+      return staffReply("🔓 Server lockdown removed.");
     }
 
     // -setlevel @user level
     if (cmd === "setlevel") {
-      if (!isMod) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
       const level = parseInt(args[1]);
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
-      if (isNaN(level) || level < 1 || level > 50) return message.reply("❌ Level must be between 1 and 50.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!user) return staffReply("❌ User not found.");
+      if (isNaN(level) || level < 1 || level > 50) return staffReply("❌ Level must be between 1 and 50.");
       if (!levelData[user.id]) levelData[user.id] = { xp: 0, level: 1 };
       levelData[user.id].level = level;
       levelData[user.id].xp = 0;
       saveLevels();
-      return message.reply(`✅ Set ${user.tag}'s level to **${level}** (XP reset to 0).`);
+      return staffReply(`✅ Set ${user.tag}'s level to **${level}** (XP reset to 0).`);
     }
 
     // -mylevel
     if (cmd === "mylevel") {
       const data = levelData[message.author.id];
-      if (!data) return message.reply("You have no XP yet.");
+      if (!data) return staffReply("You have no XP yet.");
       const lvl = data.level;
       const req = lvl <= 10 ? 450 : lvl <= 20 ? 800 : lvl <= 30 ? 960 : lvl <= 40 ? 1200 : 1500;
-      return message.reply(`Level: ${data.level}\nXP: ${data.xp}/${req}`);
+      return staffReply(`Level: ${data.level}\nXP: ${data.xp}/${req}`);
     }
 
     // -leaderboard
     if (cmd === "leaderboard") {
       const sorted = Object.entries(levelData).sort((a, b) => b[1].level - a[1].level).slice(0, 10);
-      if (sorted.length === 0) return message.reply("No data yet.");
+      if (sorted.length === 0) return staffReply("No data yet.");
       const lb = sorted.map((u, i) => { const m = message.guild.members.cache.get(u[0]); return `${i + 1}. ${m ? m.user.tag : "Unknown"} — Level ${u[1].level}`; }).join("\n");
-      return message.reply(`🏆 **XP Leaderboard**\n\n${lb}`);
+      return staffReply(`🏆 **XP Leaderboard**\n\n${lb}`);
     }
 
     // -recruitleaderboard
     if (cmd === "recruitleaderboard") {
       const sorted = Object.entries(inviteData).sort((a, b) => b[1].invites - a[1].invites).slice(0, 10);
-      if (sorted.length === 0) return message.reply("No recruitment data yet.");
+      if (sorted.length === 0) return staffReply("No recruitment data yet.");
       const lb = sorted.map((u, i) => { const m = message.guild.members.cache.get(u[0]); return `${i + 1}. ${m ? m.user.tag : "Unknown"} — ${u[1].invites} invites`; }).join("\n");
-      return message.reply(`📈 **Recruitment Leaderboard**\n\n${lb}`);
+      return staffReply(`📈 **Recruitment Leaderboard**\n\n${lb}`);
     }
 
     // -myinvites
     if (cmd === "myinvites") {
       const data = inviteData[message.author.id];
-      if (!data) return message.reply("You have 0 invites.");
-      return message.reply(`📊 You have invited ${data.invites} member(s).`);
+      if (!data) return staffReply("You have 0 invites.");
+      return staffReply(`📊 You have invited ${data.invites} member(s).`);
     }
 
     // -claim
     if (cmd === "claim") {
-      if (!isTicketStaff) return message.reply("❌ Only ticket staff can use this.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
       if (claimedTickets.has(message.channel.id)) {
         const claimerTag = claimedTickets.get(message.channel.id);
-        return message.reply(`❌ This ticket has already been claimed by **${claimerTag}**.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+        return staffReply(`❌ This ticket has already been claimed by **${claimerTag}**.`);
       }
       claimedTickets.set(message.channel.id, message.author.tag);
       if (message.channel.name.startsWith("🔴-")) {
@@ -647,7 +646,7 @@ client.on("messageCreate", async message => {
 
     // -close reason
     if (cmd === "close") {
-      if (!isTicketStaff) return message.reply("❌ Only ticket staff can use this.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
       const reason = args.join(" ") || "No reason provided";
       const channel = message.channel;
       const channelName = channel.name;
@@ -672,7 +671,7 @@ client.on("messageCreate", async message => {
 
     // -closereq
     if (cmd === "closereq") {
-      if (!isTicketStaff) return message.reply("❌ Only ticket staff can use this.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
       const embed = new EmbedBuilder()
         .setTitle("Close Request").setDescription("The ticket support would like to know whether or not you want to close the ticket.")
         .setColor("#2A5CFF").setTimestamp();
@@ -685,11 +684,11 @@ client.on("messageCreate", async message => {
 
     // -rename new-name
     if (cmd === "rename") {
-      if (!isAllowedRename) return message.reply("❌ Only ticket or order support staff can use this.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isAllowedRename) return staffReply("❌ Only ticket or order support staff can use this.");
       const validCategories = [TICKET_CATEGORY, ORDER_TICKET_CATEGORY];
-      if (!validCategories.includes(message.channel.parentId)) return message.reply("❌ This command can only be used inside a ticket channel.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!validCategories.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
       const newName = args.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "");
-      if (!newName) return message.reply("❌ Invalid name provided.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!newName) return staffReply("❌ Invalid name provided.");
       const renamedBy = message.author.username.toLowerCase().replace(/[^a-z0-9]/g, "");
       const finalName = `🟢-${renamedBy}-${newName}`;
       await message.channel.setName(finalName).catch(() => {});
@@ -703,49 +702,55 @@ client.on("messageCreate", async message => {
     // -status
     if (cmd === "status") {
       const entry = statusData[message.author.id];
-      if (!entry) return message.reply("You don't have an order status set yet. Please open a ticket if you have an active order.");
+      if (!entry) return staffReply("You don't have an order status set yet. Please open a ticket if you have an active order.");
       const statusMap = { pending: "🟡 Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
       const embed = new EmbedBuilder()
         .setTitle("Order Status")
         .addFields({ name: "Status", value: statusMap[entry.status] || "Unknown" }, { name: "Last Updated", value: entry.updatedAt })
         .setColor("#2A5CFF").setTimestamp();
-      return message.reply({ embeds: [embed] });
+      const m = await message.reply({ embeds: [embed] });
+      setTimeout(() => m.delete().catch(() => {}), 5000);
+      return;
     }
 
     // -statusupdate @user pending/inprogress/completed
     if (cmd === "statusupdate") {
-      if (!isStatusStaff) return message.reply("❌ No permission.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!isStatusStaff) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
       const newStatus = args[1]?.toLowerCase();
       const validStatuses = ["pending", "inprogress", "completed"];
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
-      if (!validStatuses.includes(newStatus)) return message.reply("❌ Status must be: `pending`, `inprogress`, or `completed`.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!user) return staffReply("❌ User not found.");
+      if (!validStatuses.includes(newStatus)) return staffReply("❌ Status must be: `pending`, `inprogress`, or `completed`.");
       const statusMap = { pending: "🟡 Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
       statusData[user.id] = { status: newStatus, updatedAt: new Date().toLocaleString() };
       saveStatuses();
       await user.send(`📦 Your order status has been updated!\n\n**Status:** ${statusMap[newStatus]}\n\nUse **/status** in the server to check it at any time.`).catch(() => {});
-      return message.reply(`✅ Updated ${user.tag}'s status to **${statusMap[newStatus]}**.`);
+      return staffReply(`✅ Updated ${user.tag}'s status to **${statusMap[newStatus]}**.`);
     }
 
     // -taxcalc amount
     if (cmd === "taxcalc") {
       const amount = parseInt(args[0]);
-      if (isNaN(amount) || amount <= 0) return message.reply("❌ Please provide a valid positive amount of Robux.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (isNaN(amount) || amount <= 0) return staffReply("❌ Please provide a valid positive amount of Robux.");
       const chargeAmount = Math.ceil(amount / 0.7);
       const embed = new EmbedBuilder()
         .setTitle("Tax Calculation").setDescription(`Including the Roblox Tax, you would have to charge **${chargeAmount} robux**.`)
         .setColor("#2A5CFF").setTimestamp();
-      return message.reply({ embeds: [embed] });
+      const m = await message.reply({ embeds: [embed] });
+      setTimeout(() => m.delete().catch(() => {}), 5000);
+      return;
     }
 
     // -getid @user or username
     if (cmd === "getid") {
       const user = await resolveUser(args[0]);
-      if (!user) return message.reply("❌ User not found.").then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+      if (!user) return staffReply("❌ User not found.");
       const embed = new EmbedBuilder()
         .setDescription(`${user.username} | ${user.id}`)
         .setColor("#2A5CFF").setTimestamp();
-      return message.channel.send({ embeds: [embed] });
+      const m = await message.reply({ embeds: [embed] });
+      setTimeout(() => m.delete().catch(() => {}), 5000);
+      return;
     }
 
     return;
@@ -1023,8 +1028,6 @@ const commands = [
     .addStringOption(o => o.setName('new-name').setDescription('New name for the ticket').setRequired(true)),
   new SlashCommandBuilder().setName('getid').setDescription('Get the Discord ID of a user')
     .addUserOption(o => o.setName('player').setDescription('The user to look up').setRequired(true)),
-
-  // ===== REVIEW =====
   new SlashCommandBuilder().setName('review').setDescription('Submit a product review')
     .addStringOption(o => o.setName('product').setDescription('Name of the product').setRequired(true))
     .addStringOption(o => o.setName('designer').setDescription('Name of the designer').setRequired(true))
@@ -1038,11 +1041,7 @@ const commands = [
       ))
     .addStringOption(o => o.setName('reason').setDescription('Reason for review').setRequired(true))
     .addAttachmentOption(o => o.setName('image').setDescription('Image of the product (optional)').setRequired(false)),
-
-  // ===== STATUS =====
   new SlashCommandBuilder().setName('status').setDescription('Check the status of your order'),
-
-  // ===== STATUS UPDATE =====
   new SlashCommandBuilder().setName('statusupdate').setDescription('Update the order status for a user')
     .addUserOption(o => o.setName('user').setDescription('User whose status to update').setRequired(true))
     .addStringOption(o => o.setName('status').setDescription('New status').setRequired(true)
@@ -1051,8 +1050,6 @@ const commands = [
         { name: '🔵 In Progress', value: 'inprogress' },
         { name: '✅ Completed', value: 'completed' }
       )),
-
-  // ===== TAX CALC =====
   new SlashCommandBuilder().setName('taxcalc').setDescription('Calculate the Roblox tax on a payment')
     .addIntegerOption(o => o.setName('robux').setDescription('Amount of Robux you want to receive').setRequired(true))
 ];
@@ -1149,8 +1146,7 @@ client.on('interactionCreate', async interaction => {
       const user = interaction.options.getUser("user");
       const reason = interaction.options.getString("reason");
       addLog(user.id, "Warning", interaction.user.tag, reason);
-      await interaction.reply({ content: `⚠️ ${user.tag} warned.` });
-      setTimeout(() => interaction.deleteReply().catch(() => {}), 5000);
+      return interaction.reply({ content: `⚠️ ${user.tag} warned.`, flags: 64 });
     }
 
     // LOGS
@@ -1171,8 +1167,7 @@ client.on('interactionCreate', async interaction => {
       const user = interaction.options.getUser("user");
       playerLogs[user.id] = [];
       saveLogs();
-      await interaction.reply({ content: `🧹 Logs cleared.` });
-      setTimeout(() => interaction.deleteReply().catch(() => {}), 5000);
+      return interaction.reply({ content: `🧹 Logs cleared.`, flags: 64 });
     }
 
     // STRIKE
@@ -1214,7 +1209,7 @@ client.on('interactionCreate', async interaction => {
       const member = interaction.options.getMember("user");
       const minutes = interaction.options.getInteger("minutes");
       await member.timeout(minutes * 60 * 1000);
-      return interaction.reply(`${member.user.tag} muted for ${minutes} minutes.`);
+      return interaction.reply({ content: `${member.user.tag} muted for ${minutes} minutes.`, flags: 64 });
     }
 
     // CLEAR STRIKES
@@ -1224,7 +1219,7 @@ client.on('interactionCreate', async interaction => {
       const user = interaction.options.getUser("user");
       strikeData[user.id] = 0;
       saveStrikes();
-      return interaction.reply({ content: `✅ Cleared all strikes for ${user.tag}.` });
+      return interaction.reply({ content: `✅ Cleared all strikes for ${user.tag}.`, flags: 64 });
     }
 
     // SLOWMODE
@@ -1233,7 +1228,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({ content: "❌ No permission.", flags: 64 });
       const seconds = interaction.options.getInteger("seconds");
       await interaction.channel.setRateLimitPerUser(seconds);
-      return interaction.reply(`Slowmode set to ${seconds} seconds.`);
+      return interaction.reply({ content: `Slowmode set to ${seconds} seconds.`, flags: 64 });
     }
 
     // LOCKDOWN
@@ -1244,7 +1239,7 @@ client.on('interactionCreate', async interaction => {
         if (channel.type === ChannelType.GuildText)
           channel.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: false }).catch(() => {});
       });
-      return interaction.reply("🔒 Server lockdown enabled.");
+      return interaction.reply({ content: "🔒 Server lockdown enabled.", flags: 64 });
     }
 
     // UNLOCKDOWN
@@ -1255,7 +1250,7 @@ client.on('interactionCreate', async interaction => {
         if (channel.type === ChannelType.GuildText)
           channel.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: true }).catch(() => {});
       });
-      return interaction.reply("🔓 Server lockdown removed.");
+      return interaction.reply({ content: "🔓 Server lockdown removed.", flags: 64 });
     }
 
     // BAN
@@ -1272,8 +1267,7 @@ client.on('interactionCreate', async interaction => {
         .setTitle(`${user.tag} | Ban`).setDescription(`Banned by ${interaction.user.tag}\nReason: ${reason}`)
         .setColor(0xff0000).setTimestamp();
       interaction.guild.channels.cache.get(BAN_LOG_CHANNEL)?.send({ embeds: [embed] });
-      await interaction.reply({ content: `${user.tag} banned.` });
-      setTimeout(() => interaction.deleteReply().catch(() => {}), 5000);
+      return interaction.reply({ content: `${user.tag} banned.`, flags: 64 });
     }
 
     // TEMP BAN
@@ -1288,8 +1282,7 @@ client.on('interactionCreate', async interaction => {
       await member.ban({ reason: `${reason} (${hours}h)` });
       addLog(user.id, "Temp Ban", interaction.user.tag, reason);
       setTimeout(async () => { try { await interaction.guild.members.unban(user.id); } catch (err) { console.error("Temp ban unban failed:", err); } }, hours * 60 * 60 * 1000);
-      await interaction.reply({ content: `${user.tag} banned for ${hours} hours.` });
-      setTimeout(() => interaction.deleteReply().catch(() => {}), 5000);
+      return interaction.reply({ content: `${user.tag} banned for ${hours} hours.`, flags: 64 });
     }
 
     // MY LEVEL
@@ -1304,9 +1297,9 @@ client.on('interactionCreate', async interaction => {
     // XP LEADERBOARD
     if (interaction.commandName === "leaderboard") {
       const sorted = Object.entries(levelData).sort((a, b) => b[1].level - a[1].level).slice(0, 10);
-      if (sorted.length === 0) return interaction.reply("No data yet.");
+      if (sorted.length === 0) return interaction.reply({ content: "No data yet.", flags: 64 });
       const leaderboard = sorted.map((u, i) => { const m = interaction.guild.members.cache.get(u[0]); return `${i + 1}. ${m ? m.user.tag : "Unknown"} — Level ${u[1].level}`; }).join("\n");
-      return interaction.reply({ content: `🏆 **XP Leaderboard**\n\n${leaderboard}` });
+      return interaction.reply({ content: `🏆 **XP Leaderboard**\n\n${leaderboard}`, flags: 64 });
     }
 
     // SET LEVEL
@@ -1325,9 +1318,9 @@ client.on('interactionCreate', async interaction => {
     // RECRUIT LEADERBOARD
     if (interaction.commandName === "recruitleaderboard") {
       const sorted = Object.entries(inviteData).sort((a, b) => b[1].invites - a[1].invites).slice(0, 10);
-      if (sorted.length === 0) return interaction.reply("No recruitment data yet.");
+      if (sorted.length === 0) return interaction.reply({ content: "No recruitment data yet.", flags: 64 });
       const leaderboard = sorted.map((u, i) => { const m = interaction.guild.members.cache.get(u[0]); return `${i + 1}. ${m ? m.user.tag : "Unknown"} — ${u[1].invites} invites`; }).join("\n");
-      return interaction.reply({ content: `📈 **Recruitment Leaderboard**\n\n${leaderboard}` });
+      return interaction.reply({ content: `📈 **Recruitment Leaderboard**\n\n${leaderboard}`, flags: 64 });
     }
 
     // MY INVITES
@@ -1422,7 +1415,7 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
-    // ===== REVIEW =====
+    // REVIEW
     if (interaction.commandName === "review") {
       if (!interaction.member.roles.cache.has(REVIEWER_ROLE_ID))
         return interaction.reply({ content: "❌ You do not have permission to submit reviews.", flags: 64 });
@@ -1445,7 +1438,7 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ content: "✅ Your review has been submitted!", flags: 64 });
     }
 
-    // ===== STATUS =====
+    // STATUS
     if (interaction.commandName === "status") {
       const entry = statusData[interaction.user.id];
       if (!entry) return interaction.reply({ content: "You don't have an order status set yet. Please open a ticket if you have an active order.", flags: 64 });
@@ -1457,7 +1450,7 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
-    // ===== STATUS UPDATE =====
+    // STATUS UPDATE
     if (interaction.commandName === "statusupdate") {
       if (!interaction.member.roles.cache.has(STATUS_UPDATE_ROLE_ID))
         return interaction.reply({ content: "❌ You do not have permission to update statuses.", flags: 64 });
@@ -1470,7 +1463,7 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ content: `✅ Updated ${targetUser.tag}'s status to **${statusMap[newStatus]}**.`, flags: 64 });
     }
 
-    // ===== TAX CALC =====
+    // TAX CALC
     if (interaction.commandName === "taxcalc") {
       const desired = interaction.options.getInteger("robux");
       if (desired <= 0) return interaction.reply({ content: "❌ Please enter a positive amount of Robux.", flags: 64 });
