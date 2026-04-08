@@ -1053,8 +1053,8 @@ const reviewEmbed = new EmbedBuilder()
   }
 
   // ===== BUTTONS & SELECT MENUS =====
-  if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
-
+  if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isModalSubmit()) return;
+  
   // ===== APPLICATION APPROVE/DENY =====
   if (interaction.isButton() && interaction.customId.startsWith("appv2_")) {
     const isMod = interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id));
