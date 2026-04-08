@@ -623,7 +623,9 @@ const commands = [
   new SlashCommandBuilder().setName('close').setDescription('Close a ticket')
     .addStringOption(o => o.setName('reason').setDescription('Reason for closing').setRequired(true)),
   new SlashCommandBuilder().setName('closereq').setDescription('Ask the user if they want to close the ticket'),
-
+  new SlashCommandBuilder().setName('rename').setDescription('Rename a ticket channel')
+    .addStringOption(o => o.setName('new-name').setDescription('New name for the ticket').setRequired(true)),
+  
   // ===== REVIEW =====
   new SlashCommandBuilder().setName('review').setDescription('Submit a product review')
     .addStringOption(o => o.setName('product').setDescription('Name of the product').setRequired(true))
@@ -946,7 +948,10 @@ client.on('interactionCreate', async interaction => {
       }
       claimedTickets.set(interaction.channel.id, interaction.user.tag);
       const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${interaction.user}.`).setColor("#2A5CFF").setTimestamp();
-      await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
+      // Only rename if the channel hasn't already been manually renamed (i.e. still has the red emoji)
+      if (interaction.channel.name.startsWith("🔴-")) {
+        await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
+      }
       await interaction.reply({ embeds: [embed] });
     }
 
@@ -986,6 +991,36 @@ client.on('interactionCreate', async interaction => {
         new ButtonBuilder().setCustomId(`closereq_no_${interaction.user.id}`).setLabel("No").setStyle(ButtonStyle.Danger)
       );
       await interaction.reply({ embeds: [embed], components: [row] });
+    }
+
+    // RENAME
+    if (interaction.commandName === "rename") {
+      const allowedRoles = [TICKET_SUPPORT_ROLE, ORDER_SUPPORT_ROLE];
+      if (!interaction.member.roles.cache.some(r => allowedRoles.includes(r.id)))
+        return interaction.reply({ content: "❌ Only ticket or order support staff can use this.", flags: 64 });
+
+      const validCategories = [TICKET_CATEGORY, ORDER_TICKET_CATEGORY];
+      if (!validCategories.includes(interaction.channel.parentId))
+        return interaction.reply({ content: "❌ This command can only be used inside a ticket channel.", flags: 64 });
+
+      const newName = interaction.options.getString("new-name").toLowerCase().replace(/[^a-z0-9-]/g, "");
+      if (!newName) return interaction.reply({ content: "❌ Invalid name provided.", flags: 64 });
+
+      const renamedBy = interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const finalName = `🟢-${renamedBy}-${newName}`;
+
+      await interaction.channel.setName(finalName).catch(() => {});
+
+      // Mark this channel as manually renamed so claim can't overwrite it
+      claimedTickets.set(interaction.channel.id, interaction.user.tag);
+
+      const embed = new EmbedBuilder()
+        .setTitle("Ticket Renamed")
+        .setDescription(`This ticket has been renamed to **${finalName}** by ${interaction.user}.`)
+        .setColor("#2A5CFF")
+        .setTimestamp();
+
+      return interaction.reply({ embeds: [embed] });
     }
 
     // ===== REVIEW =====
@@ -1117,9 +1152,11 @@ const reviewEmbed = new EmbedBuilder()
       .setTitle("Ticket Claimed")
       .setDescription(`This ticket has been claimed by ${interaction.user}.`)
       .setColor("#2A5CFF").setTimestamp();
-    await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
+    // Only rename if the channel hasn't already been manually renamed (i.e. still has the red emoji)
+    if (interaction.channel.name.startsWith("🔴-")) {
+      await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
+    }
     await interaction.reply({ embeds: [claimEmbed] });
-  }
   
   // ===== ORDER SELECT MENU =====
   if (
