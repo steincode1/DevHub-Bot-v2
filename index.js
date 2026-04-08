@@ -367,27 +367,29 @@ client.on("messageCreate", async message => {
     const isAllowedRename = isTicketStaff || isOrderStaff;
 
     async function resolveUser(arg) {
-      if (!arg) return null;
-      const mentionMatch = arg.match(/^<@!?(\d+)>$/);
-      if (mentionMatch) return client.users.fetch(mentionMatch[1]).catch(() => null);
-      if (/^\d+$/.test(arg)) return client.users.fetch(arg).catch(() => null);
-      const found = message.guild.members.cache.find(m =>
-        m.user.username.toLowerCase() === arg.toLowerCase() ||
-        m.displayName.toLowerCase() === arg.toLowerCase()
-      );
-      return found ? found.user : null;
-    }
+  if (!arg) return null;
+  const mentionMatch = arg.match(/^<@!?(\d+)>$/);
+  if (mentionMatch) return client.users.fetch(mentionMatch[1]).catch(() => null);
+  if (/^\d+$/.test(arg)) return client.users.fetch(arg).catch(() => null);
+  await message.guild.members.fetch(); // force full cache
+  const found = message.guild.members.cache.find(m =>
+    m.user.username.toLowerCase() === arg.toLowerCase() ||
+    m.displayName.toLowerCase() === arg.toLowerCase()
+  );
+  return found ? found.user : null;
+}
 
     async function resolveMember(arg) {
-      if (!arg) return null;
-      const mentionMatch = arg.match(/^<@!?(\d+)>$/);
-      const id = mentionMatch ? mentionMatch[1] : /^\d+$/.test(arg) ? arg : null;
-      if (id) return message.guild.members.fetch(id).catch(() => null);
-      return message.guild.members.cache.find(m =>
-        m.user.username.toLowerCase() === arg.toLowerCase() ||
-        m.displayName.toLowerCase() === arg.toLowerCase()
-      ) || null;
-    }
+  if (!arg) return null;
+  const mentionMatch = arg.match(/^<@!?(\d+)>$/);
+  const id = mentionMatch ? mentionMatch[1] : /^\d+$/.test(arg) ? arg : null;
+  if (id) return message.guild.members.fetch(id).catch(() => null);
+  await message.guild.members.fetch(); // force full cache
+  return message.guild.members.cache.find(m =>
+    m.user.username.toLowerCase() === arg.toLowerCase() ||
+    m.displayName.toLowerCase() === arg.toLowerCase()
+  ) || null;
+}
 
     // -verify
     if (cmd === "verify") {
