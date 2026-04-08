@@ -61,6 +61,9 @@ const STATUS_UPDATE_ROLE_ID = "1489098884700700793";
 const TICKET_PANEL_CHANNEL = "1487555705400463491";
 const TICKET_CATEGORY = "1487555806202171533";
 const TICKET_SUPPORT_ROLE = "1487555904390828052";
+const ORDER_PANEL_CHANNEL = "1489095803896074320";
+const ORDER_TICKET_CATEGORY = "1491270734985822380";
+const ORDER_SUPPORT_ROLE = "1489098884700700793";
 
 // ===== RAID PREVENTION =====
 const RAID_JOIN_THRESHOLD = 5;
@@ -189,6 +192,29 @@ client.once("ready", async () => {
     await panelChannel.send({ embeds: [ticketEmbed], components: [row] });
   }
 });
+
+const orderPanelChannel = await guild.channels.fetch(ORDER_PANEL_CHANNEL).catch(() => null);
+if (orderPanelChannel) {
+  const orderPanelEmbed = new EmbedBuilder()
+    .setColor("#2b2d31")
+    .setDescription("Click below to begin your order!")
+    .setFooter({ text: "Developer Hub • Order System" });
+
+  const orderRow = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId("order_select")
+      .setPlaceholder("Select an option...")
+      .addOptions([
+        { label: "Order", description: "Place a new order", value: "place_order" }
+      ])
+  );
+
+  const orderMessages = await orderPanelChannel.messages.fetch({ limit: 10 });
+  const existingOrder = orderMessages.find(m => m.author.id === client.user.id && m.components.length > 0 && m.components[0].components[0]?.customId === "order_select");
+  if (!existingOrder) {
+    await orderPanelChannel.send({ embeds: [orderPanelEmbed], components: [orderRow] });
+  }
+}
 
 // ===== ANTI RAID + AUTO ROLES =====
 let recentJoins = [];
@@ -1087,6 +1113,64 @@ const reviewEmbed = new EmbedBuilder()
     await interaction.deferUpdate();
   }
 
+  // ===== ORDER SELECT MENU =====
+  if (interaction.isStringSelectMenu() && interaction.customId === "order_select") {
+    if (interaction.values[0] === "place_order") {
+      const modal = {
+        title: "Order Ticket",
+        custom_id: "order_modal",
+        components: [
+          {
+            type: 1,
+            components: [{
+              type: 4,
+              custom_id: "order_type",
+              label: "Type of Order",
+              style: 1,
+              placeholder: "Logo, Banner, GFX, ELS, Bot Hosting, ETC",
+              required: true
+            }]
+          },
+          {
+            type: 1,
+            components: [{
+              type: 4,
+              custom_id: "order_price",
+              label: "Price Range",
+              style: 1,
+              placeholder: "",
+              required: true
+            }]
+          },
+          {
+            type: 1,
+            components: [{
+              type: 4,
+              custom_id: "order_explain",
+              label: "Explain your Order",
+              style: 2,
+              placeholder: "",
+              required: true
+            }]
+          },
+          {
+            type: 1,
+            components: [{
+              type: 4,
+              custom_id: "order_agree",
+              label: "Do you agree to our Order Terms?",
+              style: 1,
+              placeholder: "Type: I Agree",
+              required: true
+            }]
+          }
+        ]
+      };
+      await interaction.showModal(modal);
+    }
+    return;
+  }
+
   // ===== OPEN TICKET (select menu) =====
   if (
     (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") ||
@@ -1140,6 +1224,53 @@ const reviewEmbed = new EmbedBuilder()
     if (transcriptChannel) await transcriptChannel.send({ embeds: [transcriptEmbed] });
     await interaction.reply({ content: "🗑️ Closing ticket...", flags: 64 });
     setTimeout(() => channel.delete().catch(() => {}), 2000);
+  }
+
+// ===== ORDER MODAL SUBMIT =====
+  if (interaction.type === 5 && interaction.customId === "order_modal") {
+    const orderType = interaction.fields.getTextInputValue("order_type");
+    const orderPrice = interaction.fields.getTextInputValue("order_price");
+    const orderExplain = interaction.fields.getTextInputValue("order_explain");
+    const orderAgree = interaction.fields.getTextInputValue("order_agree");
+
+    const user = interaction.user;
+    const guild = interaction.guild;
+    const cleanName = user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const channel = await guild.channels.create({
+      name: `🔴-order-${cleanName}`,
+      type: ChannelType.GuildText,
+      parent: ORDER_TICKET_CATEGORY,
+      permissionOverwrites: [
+        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: TICKET_SUPPORT_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: ORDER_SUPPORT_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+      ]
+    });
+
+    const orderEmbed = new EmbedBuilder()
+      .setTitle("Order Ticket")
+      .setDescription(`Thank you for placing an order, ${user}! A staff member will be with you shortly.`)
+      .addFields(
+        { name: "Type of Order", value: orderType, inline: false },
+        { name: "Price Range", value: orderPrice, inline: false },
+        { name: "Order Explanation", value: orderExplain, inline: false },
+        { name: "Agreed to Terms", value: orderAgree, inline: false }
+      )
+      .setColor("#2A5CFF")
+      .setFooter({ text: `Order by ${user.tag}` })
+      .setTimestamp();
+
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claim").setStyle(ButtonStyle.Success)
+    );
+
+    await channel.send(`<@&${TICKET_SUPPORT_ROLE}> <@&${ORDER_SUPPORT_ROLE}>`);
+    await channel.send({ embeds: [orderEmbed], components: [buttons] });
+
+    return interaction.reply({ content: `✅ Order ticket created: ${channel}`, flags: 64 });
   }
 
   // ===== CLOSE REQUEST BUTTONS =====
