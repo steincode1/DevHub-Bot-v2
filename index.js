@@ -200,13 +200,12 @@ if (!existing) {
       .setFooter({ text: "Developer Hub • Order System" });
 
     const orderRow = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId("order_select")
-        .setPlaceholder("Select an option...")
-        .addOptions([
-          { label: "Order", description: "Place a new order", value: "place_order" }
-        ])
-    );
+  new ButtonBuilder()
+    .setCustomId("place_order_btn")
+    .setLabel("Order Here!")
+    .setEmoji({ id: "1490211876007841823", name: "DevHub" })
+    .setStyle(ButtonStyle.Primary)
+);
 
     const orderMessages = await orderPanelChannel.messages.fetch({ limit: 10 });
     const existingOrder = orderMessages.find(m => m.author.id === client.user.id && m.components.length > 0 && m.components[0].components[0]?.customId === "order_select");
@@ -262,12 +261,13 @@ client.on("guildMemberAdd", async member => {
 
   if (member.roles.cache.some(r => EXEMPT_ROLES.includes(r.id))) return;
   const accountAge = (Date.now() - member.user.createdTimestamp) / (1000 * 60 * 60 * 24);
-  if (accountAge < MIN_ACCOUNT_AGE_DAYS) {
-    await member.kick("Alt account detected (too new)").catch(() => {});
-    member.guild.channels.cache.get(FULL_LOG_CHANNEL_ID)
-      ?.send(`🚫 Kicked alt account: ${member.user.tag} (${accountAge.toFixed(1)} days old)`);
-    return;
-  }
+// DISABLED - young account kick is turned off
+// if (accountAge < MIN_ACCOUNT_AGE_DAYS) {
+//   await member.kick("Alt account detected (too new)").catch(() => {});
+//   member.guild.channels.cache.get(FULL_LOG_CHANNEL_ID)
+//     ?.send(`🚫 Kicked alt account: ${member.user.tag} (${accountAge.toFixed(1)} days old)`);
+//   return;
+// }
 
   await member.roles.add(UNVERIFIED_ROLE).catch(err => console.error("Failed to add unverified role:", err));
 
@@ -1114,8 +1114,10 @@ const reviewEmbed = new EmbedBuilder()
   }
 
   // ===== ORDER SELECT MENU =====
-  if (interaction.isStringSelectMenu() && interaction.customId === "order_select") {
-    if (interaction.values[0] === "place_order") {
+  if (
+  (interaction.isStringSelectMenu() && interaction.customId === "order_select" && interaction.values[0] === "place_order") ||
+  (interaction.isButton() && interaction.customId === "place_order_btn")
+) {
       const modal = {
         title: "Order Ticket",
         custom_id: "order_modal",
@@ -1167,7 +1169,6 @@ const reviewEmbed = new EmbedBuilder()
         ]
       };
       await interaction.showModal(modal);
-    }
     return;
   }
 
@@ -1227,7 +1228,7 @@ const reviewEmbed = new EmbedBuilder()
   }
 
 // ===== ORDER MODAL SUBMIT =====
-  if (interaction.type === 5 && interaction.customId === "order_modal") {
+  if (interaction.isModalSubmit && interaction.isModalSubmit() && interaction.customId === "order_modal") {
     const orderType = interaction.fields.getTextInputValue("order_type");
     const orderPrice = interaction.fields.getTextInputValue("order_price");
     const orderExplain = interaction.fields.getTextInputValue("order_explain");
