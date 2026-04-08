@@ -1172,36 +1172,33 @@ const reviewEmbed = new EmbedBuilder()
     return;
   }
 
-  // ===== OPEN TICKET (select menu) =====
+  // ===== OPEN TICKET (select menu) — show modal first =====
   if (
     (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") ||
     interaction.customId === "general_ticket" ||
     interaction.customId === "ia_ticket" ||
     interaction.customId === "mgmt_ticket"
   ) {
-    const user = interaction.user;
-    const guild = interaction.guild;
     const type = interaction.isStringSelectMenu() ? interaction.values[0] : interaction.customId;
-    const cleanName = user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
-    let name, title, ticketDescription;
-    if (type === "general_ticket") { name = `🔴-general-${cleanName}`; title = "General Support"; ticketDescription = "Thank you for opening a ticket, a staff member will be with you shortly. If you could provide the reason why you opened it while waiting that would be great, thanks."; }
-    if (type === "ia_ticket") { name = `🔴-ia-${cleanName}`; title = "Internal Affairs Support"; ticketDescription = "Thank you for opening a ticket, an IA member will be with you shortly. Please explain why you opened the ticket while waiting."; }
-    if (type === "mgmt_ticket") { name = `🔴-mgmt-${cleanName}`; title = "Management Support"; ticketDescription = "Thank you for opening a ticket, a HR member will be with you shortly. Please explain why you opened the ticket while waiting."; }
-    const channel = await guild.channels.create({
-      name, type: ChannelType.GuildText, parent: TICKET_CATEGORY,
-      permissionOverwrites: [
-        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-        { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: TICKET_SUPPORT_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+    const modal = {
+      title: "Open a Ticket",
+      custom_id: `ticket_modal_${type}`,
+      components: [
+        {
+          type: 1,
+          components: [{
+            type: 4,
+            custom_id: "ticket_reason",
+            label: "Reason for opening this ticket",
+            style: 2,
+            placeholder: "Please describe your issue or reason...",
+            required: true
+          }]
+        }
       ]
-    });
-    const embed = new EmbedBuilder().setTitle(title).setDescription(ticketDescription).setColor("#2A5CFF").setTimestamp();
-    const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claim").setStyle(ButtonStyle.Success)
-    );
-    channel.send({ embeds: [embed], components: [buttons] });
-    interaction.reply({ content: `Ticket created: ${channel}`, flags: 64 });
+    };
+    await interaction.showModal(modal);
+    return;
   }
 
   // ===== CLOSE TICKET (button) =====
@@ -1272,6 +1269,38 @@ const reviewEmbed = new EmbedBuilder()
     await channel.send({ embeds: [orderEmbed], components: [buttons] });
 
     return interaction.reply({ content: `✅ Order ticket created: ${channel}`, flags: 64 });
+  }
+
+  // ===== TICKET MODAL SUBMIT =====
+  if (interaction.isModalSubmit() && interaction.customId.startsWith("ticket_modal_")) {
+    const type = interaction.customId.replace("ticket_modal_", "");
+    const reason = interaction.fields.getTextInputValue("ticket_reason");
+    const user = interaction.user;
+    const guild = interaction.guild;
+    const cleanName = user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
+    let name, title, ticketDescription;
+    if (type === "general_ticket") { name = `🔴-general-${cleanName}`; title = "General Support"; ticketDescription = "Thank you for opening a ticket, a staff member will be with you shortly. If you could provide the reason why you opened it while waiting that would be great, thanks."; }
+    if (type === "ia_ticket") { name = `🔴-ia-${cleanName}`; title = "Internal Affairs Support"; ticketDescription = "Thank you for opening a ticket, an IA member will be with you shortly. Please explain why you opened the ticket while waiting."; }
+    if (type === "mgmt_ticket") { name = `🔴-mgmt-${cleanName}`; title = "Management Support"; ticketDescription = "Thank you for opening a ticket, a HR member will be with you shortly. Please explain why you opened the ticket while waiting."; }
+    const channel = await guild.channels.create({
+      name, type: ChannelType.GuildText, parent: TICKET_CATEGORY,
+      permissionOverwrites: [
+        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: TICKET_SUPPORT_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+      ]
+    });
+    const embed = new EmbedBuilder()
+      .setTitle(title)
+      .setDescription(ticketDescription)
+      .addFields({ name: "Reason", value: reason })
+      .setColor("#2A5CFF").setTimestamp();
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claim").setStyle(ButtonStyle.Success)
+    );
+    await channel.send({ embeds: [embed], components: [buttons] });
+    return interaction.reply({ content: `✅ Ticket created: ${channel}`, flags: 64 });
   }
 
   // ===== CLOSE REQUEST BUTTONS =====
