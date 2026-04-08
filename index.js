@@ -188,33 +188,33 @@ client.once("ready", async () => {
 
   const messages = await panelChannel.messages.fetch({ limit: 10 });
   const existing = messages.find(m => m.author.id === client.user.id);
-  if (!existing) {
+if (!existing) {
     await panelChannel.send({ embeds: [ticketEmbed], components: [row] });
   }
-});
 
-const orderPanelChannel = await guild.channels.fetch(ORDER_PANEL_CHANNEL).catch(() => null);
-if (orderPanelChannel) {
-  const orderPanelEmbed = new EmbedBuilder()
-    .setColor("#2b2d31")
-    .setDescription("Click below to begin your order!")
-    .setFooter({ text: "Developer Hub • Order System" });
+  const orderPanelChannel = await guild.channels.fetch(ORDER_PANEL_CHANNEL).catch(() => null);
+  if (orderPanelChannel) {
+    const orderPanelEmbed = new EmbedBuilder()
+      .setColor("#2b2d31")
+      .setDescription("Click below to begin your order!")
+      .setFooter({ text: "Developer Hub • Order System" });
 
-  const orderRow = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId("order_select")
-      .setPlaceholder("Select an option...")
-      .addOptions([
-        { label: "Order", description: "Place a new order", value: "place_order" }
-      ])
-  );
+    const orderRow = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("order_select")
+        .setPlaceholder("Select an option...")
+        .addOptions([
+          { label: "Order", description: "Place a new order", value: "place_order" }
+        ])
+    );
 
-  const orderMessages = await orderPanelChannel.messages.fetch({ limit: 10 });
-  const existingOrder = orderMessages.find(m => m.author.id === client.user.id && m.components.length > 0 && m.components[0].components[0]?.customId === "order_select");
-  if (!existingOrder) {
-    await orderPanelChannel.send({ embeds: [orderPanelEmbed], components: [orderRow] });
+    const orderMessages = await orderPanelChannel.messages.fetch({ limit: 10 });
+    const existingOrder = orderMessages.find(m => m.author.id === client.user.id && m.components.length > 0 && m.components[0].components[0]?.customId === "order_select");
+    if (!existingOrder) {
+      await orderPanelChannel.send({ embeds: [orderPanelEmbed], components: [orderRow] });
+    }
   }
-}
+});
 
 // ===== ANTI RAID + AUTO ROLES =====
 let recentJoins = [];
