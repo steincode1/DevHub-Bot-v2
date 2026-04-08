@@ -151,6 +151,7 @@ const client = new Client({
 
 // ===== INVITE CACHE =====
 let inviteCache = new Map();
+const claimedTickets = new Map();
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
@@ -208,7 +209,7 @@ if (!existing) {
 );
 
     const orderMessages = await orderPanelChannel.messages.fetch({ limit: 10 });
-    const existingOrder = orderMessages.find(m => m.author.id === client.user.id && m.components.length > 0 && m.components[0].components[0]?.customId === "order_select");
+    const existingOrder = orderMessages.find(m => m.author.id === client.user.id && m.components.length > 0);
     if (!existingOrder) {
       await orderPanelChannel.send({ embeds: [orderPanelEmbed], components: [orderRow] });
     }
@@ -939,7 +940,13 @@ client.on('interactionCreate', async interaction => {
     if (interaction.commandName === "claim") {
       if (!interaction.member.roles.cache.has(TICKET_SUPPORT_ROLE))
         return interaction.reply({ content: "❌ Only ticket staff can use this.", flags: 64 });
-      const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`${interaction.user} has claimed this ticket.`).setColor("#2A5CFF").setTimestamp();
+      if (claimedTickets.has(interaction.channel.id)) {
+        const claimerTag = claimedTickets.get(interaction.channel.id);
+        return interaction.reply({ content: `❌ This ticket has already been claimed by **${claimerTag}**.`, flags: 64 });
+      }
+      claimedTickets.set(interaction.channel.id, interaction.user.tag);
+      const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${interaction.user}.`).setColor("#2A5CFF").setTimestamp();
+      await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
       await interaction.reply({ embeds: [embed] });
     }
 
@@ -963,10 +970,10 @@ client.on('interactionCreate', async interaction => {
         .setColor("#2A5CFF").setTimestamp();
       const transcriptChannel = interaction.guild.channels.cache.get("1489108262774247605");
       if (transcriptChannel) await transcriptChannel.send({ embeds: [transcriptEmbed] });
-      await interaction.reply({ content: "🗑️ Closing ticket...", flags: 64 });
-      setTimeout(() => channel.delete().catch(() => {}), 2000);
-    }
-
+      claimedTickets.delete(channel.id);
+    await interaction.reply({ content: "🗑️ Closing ticket...", flags: 64 });
+    setTimeout(() => channel.delete().catch(() => {}), 2000);
+  }
     // CLOSEREQ
     if (interaction.commandName === "closereq") {
       if (!interaction.member.roles.cache.has(TICKET_SUPPORT_ROLE))
@@ -1101,18 +1108,19 @@ const reviewEmbed = new EmbedBuilder()
   if (interaction.customId === "claim_ticket") {
     if (!interaction.member.roles.cache.has(TICKET_SUPPORT_ROLE))
       return interaction.reply({ content: "❌ Only ticket staff can claim tickets.", flags: 64 });
+    if (claimedTickets.has(interaction.channel.id)) {
+      const claimerTag = claimedTickets.get(interaction.channel.id);
+      return interaction.reply({ content: `❌ This ticket has already been claimed by **${claimerTag}**.`, flags: 64 });
+    }
+    claimedTickets.set(interaction.channel.id, interaction.user.tag);
     const claimEmbed = new EmbedBuilder()
-      .setTitle("**Ticket Claimed**").setDescription(`Your ticket has been claimed by ${interaction.user.tag}`)
-      .setColor("#2b2d31").setTimestamp();
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claimed").setStyle(ButtonStyle.Success).setDisabled(true)
-    );
-    await interaction.message.edit({ embeds: [claimEmbed], components: [row] });
+      .setTitle("Ticket Claimed")
+      .setDescription(`This ticket has been claimed by ${interaction.user}.`)
+      .setColor("#2A5CFF").setTimestamp();
     await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
-    await interaction.deferUpdate();
+    await interaction.reply({ embeds: [claimEmbed] });
   }
-
+  
   // ===== ORDER SELECT MENU =====
   if (
   (interaction.isStringSelectMenu() && interaction.customId === "order_select" && interaction.values[0] === "place_order") ||
@@ -1220,9 +1228,11 @@ const reviewEmbed = new EmbedBuilder()
       .setColor("#2A5CFF").setTimestamp();
     const transcriptChannel = interaction.guild.channels.cache.get("1489108262774247605");
     if (transcriptChannel) await transcriptChannel.send({ embeds: [transcriptEmbed] });
-    await interaction.reply({ content: "🗑️ Closing ticket...", flags: 64 });
-    setTimeout(() => channel.delete().catch(() => {}), 2000);
-  }
+    claimedTickets.delete(channel.id);
+      await interaction.reply({ content: "🗑️ Closing ticket...", flags: 64 });
+      setTimeout(() => channel.delete().catch(() => {}), 2000);
+      return;
+    }
 
 // ===== ORDER MODAL SUBMIT =====
   if (interaction.isModalSubmit && interaction.isModalSubmit() && interaction.customId === "order_modal") {
