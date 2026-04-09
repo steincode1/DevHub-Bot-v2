@@ -138,10 +138,8 @@ function buildGiveawayEmbed(giveaway) {
       { name: "<:clockk:1491887992703418448> **Duration**", value: durationText, inline: false }
     )
     .setColor("#2A5CFF")
-    .setFooter({
-      text: `Advertisement ID: ${giveaway.id} • ${new Date(giveaway.createdAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "2-digit", hour: "numeric", minute: "2-digit" })}`,
-      iconURL: "https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp"
-    });
+    .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp")
+    .setDescription((giveaway.description || "") + `\n\n-# *Disclaimer - to enter this giveaway you need to join ${giveaway.serverName}`);
 }
 
 // Builds the two buttons shown in the image:
@@ -1168,7 +1166,14 @@ const commands = [
     .addStringOption(o => o.setName('prize').setDescription('What the winner receives e.g. 20,000 Robux').setRequired(true))
     .addStringOption(o => o.setName('server_name').setDescription('Name of the server shown on the link button e.g. DevHub').setRequired(true))
     .addStringOption(o => o.setName('server_link').setDescription('Discord invite link shown in the embed').setRequired(true))
-    .addIntegerOption(o => o.setName('duration_minutes').setDescription('How long the giveaway lasts in minutes').setRequired(true))
+    .addStringOption(o => o.setName('duration').setDescription('How long the giveaway lasts').setRequired(true)
+      .addChoices(
+        { name: '3 Days', value: '4320' },
+        { name: '7 Days', value: '10080' },
+        { name: '9 Days', value: '12960' },
+        { name: '12 Days', value: '17280' },
+        { name: '14 Days', value: '20160' }
+      ))
     .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true)),
 
   // ===== REROLL — slash only, reply to the giveaway message =====
@@ -1608,7 +1613,7 @@ client.on('interactionCreate', async interaction => {
       const prize = interaction.options.getString("prize");
       const serverName = interaction.options.getString("server_name");
       const serverLink = interaction.options.getString("server_link");
-      const durationMinutes = interaction.options.getInteger("duration_minutes");
+      const durationMinutes = parseInt(interaction.options.getString("duration"));
       const targetChannel = interaction.options.getChannel("channel");
 
       // Validate it's a text channel
