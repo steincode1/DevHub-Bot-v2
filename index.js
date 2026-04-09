@@ -130,13 +130,13 @@ function buildGiveawayEmbed(giveaway) {
 
   return new EmbedBuilder()
     .setTitle(giveaway.title)
-    .setDescription(giveaway.description)
-    .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
-    .addFields(
-      { name: "<:linkk:1491888052610793734> Server", value: giveaway.serverLink, inline: true },
-      { name: "<:roblox:1491888168679772371> Prize", value: giveaway.prize, inline: true },
-      { name: "<:clockk:1491887992703418448> Duration", value: durationText, inline: true }
+    .setDescription(
+      giveaway.description + `\n\n` +
+      `<:CF11:1488888964755492944> <:linkk:1491888052610793734> **Server:** ${giveaway.serverLink}\n` +
+      `<:CF11:1488888964755492944> <:roblox:1491888168679772371> **Prize:** ${giveaway.prize}\n` +
+      `<:CF11:1488888964755492944> <:clockk:1491887992703418448> **Duration:** ${durationText}`
     )
+    .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
     .setColor("#2A5CFF")
     .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp");
 }
