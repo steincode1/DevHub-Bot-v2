@@ -88,23 +88,156 @@ const STRIKE_DB = "./strikes.json";
 const LEVEL_DB = "./levels.json";
 const INVITE_DB = "./invites.json";
 const STATUS_DB = "./statuses.json";
+const GIVEAWAY_DB = "./giveaways.json";
 
 let strikeData = fs.existsSync(STRIKE_DB) ? JSON.parse(fs.readFileSync(STRIKE_DB)) : {};
 let levelData = fs.existsSync(LEVEL_DB) ? JSON.parse(fs.readFileSync(LEVEL_DB)) : {};
 let inviteData = fs.existsSync(INVITE_DB) ? JSON.parse(fs.readFileSync(INVITE_DB)) : {};
 let playerLogs = fs.existsSync(LOG_DB) ? JSON.parse(fs.readFileSync(LOG_DB)) : {};
 let statusData = fs.existsSync(STATUS_DB) ? JSON.parse(fs.readFileSync(STATUS_DB)) : {};
+let giveawayData = fs.existsSync(GIVEAWAY_DB) ? JSON.parse(fs.readFileSync(GIVEAWAY_DB)) : {};
 
 function saveStrikes() { fs.writeFileSync(STRIKE_DB, JSON.stringify(strikeData, null, 2)); }
 function saveLevels() { fs.writeFileSync(LEVEL_DB, JSON.stringify(levelData, null, 2)); }
 function saveInvites() { fs.writeFileSync(INVITE_DB, JSON.stringify(inviteData, null, 2)); }
 function saveLogs() { fs.writeFileSync(LOG_DB, JSON.stringify(playerLogs, null, 2)); }
 function saveStatuses() { fs.writeFileSync(STATUS_DB, JSON.stringify(statusData, null, 2)); }
+function saveGiveaways() { fs.writeFileSync(GIVEAWAY_DB, JSON.stringify(giveawayData, null, 2)); }
 
 function addLog(userId, type, moderator, reason) {
   if (!playerLogs[userId]) playerLogs[userId] = [];
   playerLogs[userId].push({ type, moderator, reason, date: new Date().toLocaleString() });
   saveLogs();
+}
+
+// ===== GIVEAWAY HELPER =====
+// Builds the exact embed shown in the image
+function buildGiveawayEmbed(giveaway) {
+  const now = Date.now();
+  const endsAt = giveaway.endsAt;
+  let durationText;
+  if (now >= endsAt) {
+    durationText = "Ended";
+  } else {
+    const msLeft = endsAt - now;
+    const days = Math.floor(msLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((msLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
+    if (days > 0) durationText = `In ${days} day${days !== 1 ? "s" : ""}`;
+    else if (hours > 0) durationText = `In ${hours} hour${hours !== 1 ? "s" : ""}`;
+    else durationText = `In ${minutes} minute${minutes !== 1 ? "s" : ""}`;
+  }
+
+  return new EmbedBuilder()
+    .setTitle(giveaway.title)
+    .setDescription(giveaway.description)
+    .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
+    .addFields(
+      { name: "<:linkk:1491888052610793734> **Server**", value: giveaway.serverLink, inline: false },
+      { name: "<:roblox:1491888168679772371> **Prize**", value: giveaway.prize, inline: false },
+      { name: "<:clockk:1491887992703418448> **Duration**", value: durationText, inline: false }
+    )
+    .setColor("#2A5CFF")
+    .setFooter({
+      text: `Advertisement ID: ${giveaway.id} • ${new Date(giveaway.createdAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "2-digit", hour: "numeric", minute: "2-digit" })}`,
+      iconURL: "https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp"
+    });
+}
+
+// Builds the two buttons shown in the image:
+// 1. "Join Giveaway" (blue, clickable, tracks entries)
+// 2. "Join {serverName}" (grey/link button, opens serverLink)
+// 3. Entry count display (disabled grey button)
+function buildGiveawayComponents(giveaway) {
+  const entryCount = giveaway.entries ? giveaway.entries.length : 0;
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`giveaway_join_${giveaway.id}`)
+      .setLabel("🎉 Join Giveaway")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setLabel(`Join ${giveaway.serverName}`)
+      .setStyle(ButtonStyle.Link)
+      .setURL(giveaway.serverLink),
+    new ButtonBuilder()
+      .setCustomId(`giveaway_count_${giveaway.id}`)
+      .setLabel(`${entryCount} Entries`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true)
+  );
+}
+
+// Picks a random winner from entries and sends the win message as a reply to the giveaway message
+async function concludeGiveaway(giveawayId, rerollBy = null) {
+  const giveaway = giveawayData[giveawayId];
+  if (!giveaway) return;
+
+  try {
+    const guild = client.guilds.cache.get(GUILD_ID);
+    if (!guild) return;
+    const channel = await guild.channels.fetch(giveaway.channelId).catch(() => null);
+    if (!channel) return;
+    const message = await channel.messages.fetch(giveaway.messageId).catch(() => null);
+    if (!message) return;
+
+    const entries = giveaway.entries || [];
+    if (entries.length === 0) {
+      await message.reply("😔 No one entered this giveaway so there is no winner.");
+      return;
+    }
+
+    // Pick a random winner
+    const winnerId = entries[Math.floor(Math.random() * entries.length)];
+    const winner = await guild.members.fetch(winnerId).catch(() => null);
+    const winnerMention = winner ? `<@${winnerId}>` : `<@${winnerId}>`;
+
+    // Update the embed to show it ended
+    giveaway.ended = true;
+    saveGiveaways();
+
+    const endedEmbed = buildGiveawayEmbed(giveaway);
+
+    // Update the original message buttons — disable Join Giveaway, keep link, update count
+    const endedRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`giveaway_join_${giveaway.id}`)
+        .setLabel("🎉 Join Giveaway")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(true),
+      new ButtonBuilder()
+        .setLabel(`Join ${giveaway.serverName}`)
+        .setStyle(ButtonStyle.Link)
+        .setURL(giveaway.serverLink),
+      new ButtonBuilder()
+        .setCustomId(`giveaway_count_${giveaway.id}`)
+        .setLabel(`${entries.length} Entries`)
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true)
+    );
+
+    await message.edit({ embeds: [endedEmbed], components: [endedRow] }).catch(() => {});
+
+    // Reply to the original message with the winner announcement — matches the second image exactly
+    const replyText = rerollBy
+      ? `🎉 **Rerolled!** Congratulations ${winnerMention}! You won the **${giveaway.prize}**!`
+      : `Congratulations ${winnerMention}! You won the **${giveaway.prize}**!`;
+
+    await message.reply(replyText);
+  } catch (err) {
+    console.error("Giveaway conclude error:", err);
+  }
+}
+
+// On startup, reschedule any active giveaways that haven't ended yet
+function rescheduleGiveaways() {
+  const now = Date.now();
+  for (const id in giveawayData) {
+    const g = giveawayData[id];
+    if (!g.ended && g.endsAt > now) {
+      const remaining = g.endsAt - now;
+      setTimeout(() => concludeGiveaway(id), remaining);
+    }
+  }
 }
 
 // ===== APPLICATION SESSION TRACKING =====
@@ -213,6 +346,9 @@ client.once("ready", async () => {
       await orderPanelChannel.send({ embeds: [orderPanelEmbed], components: [orderRow] });
     }
   }
+
+  // Reschedule any giveaways that were running before restart
+  rescheduleGiveaways();
 });
 
 // ===== ANTI RAID + AUTO ROLES =====
@@ -359,7 +495,6 @@ client.on("messageCreate", async message => {
     const isStatusStaff = message.member.roles.cache.has(STATUS_UPDATE_ROLE_ID);
     const isAllowedRename = isTicketStaff || isOrderStaff;
 
-    // Helper: auto-delete a reply after 5s (staff-only visibility simulation)
     async function staffReply(content) {
       const m = await message.reply(content);
       setTimeout(() => m.delete().catch(() => {}), 5000);
@@ -390,7 +525,6 @@ client.on("messageCreate", async message => {
       ) || null;
     }
 
-    // -verify
     if (cmd === "verify") {
       if (message.channel.id !== VERIFY_CHANNEL_ID) return staffReply("❌ Use this in the verify channel.");
       if (!message.member.roles.cache.has(UNVERIFIED_ROLE)) return staffReply("❌ Already verified.");
@@ -399,7 +533,6 @@ client.on("messageCreate", async message => {
       return staffReply("✅ Verified!");
     }
 
-    // -promote @user @role reason
     if (cmd === "promote") {
       if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
@@ -421,7 +554,6 @@ client.on("messageCreate", async message => {
       return staffReply("✅ Promotion sent.");
     }
 
-    // -demote @user @newrole @removerole reason
     if (cmd === "demote") {
       if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
@@ -444,7 +576,6 @@ client.on("messageCreate", async message => {
       return staffReply("✅ Demotion sent.");
     }
 
-    // -warn @user reason
     if (cmd === "warn") {
       if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
@@ -454,7 +585,6 @@ client.on("messageCreate", async message => {
       return staffReply(`⚠️ ${user.tag} warned.`);
     }
 
-    // -logs @user
     if (cmd === "logs") {
       if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
@@ -464,7 +594,6 @@ client.on("messageCreate", async message => {
       return staffReply(logs.map(l => `• [${l.date}] ${l.type} | ${l.moderator} | ${l.reason}`).join("\n"));
     }
 
-    // -clearlogs @user
     if (cmd === "clearlogs") {
       if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
@@ -474,7 +603,6 @@ client.on("messageCreate", async message => {
       return staffReply("🧹 Logs cleared.");
     }
 
-    // -ban @user reason
     if (cmd === "ban") {
       if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
@@ -487,7 +615,6 @@ client.on("messageCreate", async message => {
       return staffReply(`${target.user.tag} banned.`);
     }
 
-    // -tban @user hours reason
     if (cmd === "tban") {
       if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
@@ -501,7 +628,6 @@ client.on("messageCreate", async message => {
       return staffReply(`${target.user.tag} banned for ${hours} hours.`);
     }
 
-    // -strike @user reason
     if (cmd === "strike") {
       if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
@@ -526,7 +652,6 @@ client.on("messageCreate", async message => {
       return;
     }
 
-    // -clearstrikes @user
     if (cmd === "clearstrikes") {
       if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
@@ -536,14 +661,12 @@ client.on("messageCreate", async message => {
       return staffReply(`✅ Cleared all strikes for ${user.tag}.`);
     }
 
-    // -strikes @user
     if (cmd === "strikes") {
       const user = await resolveUser(args[0]);
       if (!user) return staffReply("❌ User not found.");
       return staffReply(`${user.tag} has ${strikeData[user.id] || 0} strike(s).`);
     }
 
-    // -mute @user minutes
     if (cmd === "mute") {
       if (!isMod) return staffReply("❌ No permission.");
       const target = await resolveMember(args[0]);
@@ -554,7 +677,6 @@ client.on("messageCreate", async message => {
       return staffReply(`${target.user.tag} muted for ${minutes} minutes.`);
     }
 
-    // -slowmode seconds
     if (cmd === "slowmode") {
       if (!isMod) return staffReply("❌ No permission.");
       const seconds = parseInt(args[0]);
@@ -563,7 +685,6 @@ client.on("messageCreate", async message => {
       return staffReply(`Slowmode set to ${seconds} seconds.`);
     }
 
-    // -lockdown
     if (cmd === "lockdown") {
       if (!isMod) return staffReply("❌ No permission.");
       message.guild.channels.cache.forEach(channel => {
@@ -573,7 +694,6 @@ client.on("messageCreate", async message => {
       return staffReply("🔒 Server lockdown enabled.");
     }
 
-    // -unlockdown
     if (cmd === "unlockdown") {
       if (!isMod) return staffReply("❌ No permission.");
       message.guild.channels.cache.forEach(channel => {
@@ -583,7 +703,6 @@ client.on("messageCreate", async message => {
       return staffReply("🔓 Server lockdown removed.");
     }
 
-    // -setlevel @user level
     if (cmd === "setlevel") {
       if (!isMod) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
@@ -597,7 +716,6 @@ client.on("messageCreate", async message => {
       return staffReply(`✅ Set ${user.tag}'s level to **${level}** (XP reset to 0).`);
     }
 
-    // -mylevel
     if (cmd === "mylevel") {
       const data = levelData[message.author.id];
       if (!data) return staffReply("You have no XP yet.");
@@ -606,7 +724,6 @@ client.on("messageCreate", async message => {
       return staffReply(`Level: ${data.level}\nXP: ${data.xp}/${req}`);
     }
 
-    // -leaderboard
     if (cmd === "leaderboard") {
       const sorted = Object.entries(levelData).sort((a, b) => b[1].level - a[1].level).slice(0, 10);
       if (sorted.length === 0) return staffReply("No data yet.");
@@ -614,7 +731,6 @@ client.on("messageCreate", async message => {
       return staffReply(`🏆 **XP Leaderboard**\n\n${lb}`);
     }
 
-    // -recruitleaderboard
     if (cmd === "recruitleaderboard") {
       const sorted = Object.entries(inviteData).sort((a, b) => b[1].invites - a[1].invites).slice(0, 10);
       if (sorted.length === 0) return staffReply("No recruitment data yet.");
@@ -622,14 +738,12 @@ client.on("messageCreate", async message => {
       return staffReply(`📈 **Recruitment Leaderboard**\n\n${lb}`);
     }
 
-    // -myinvites
     if (cmd === "myinvites") {
       const data = inviteData[message.author.id];
       if (!data) return staffReply("You have 0 invites.");
       return staffReply(`📊 You have invited ${data.invites} member(s).`);
     }
 
-    // -claim
     if (cmd === "claim") {
       if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
       if (claimedTickets.has(message.channel.id)) {
@@ -644,7 +758,6 @@ client.on("messageCreate", async message => {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // -close reason
     if (cmd === "close") {
       if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
       const reason = args.join(" ") || "No reason provided";
@@ -669,7 +782,6 @@ client.on("messageCreate", async message => {
       return;
     }
 
-    // -closereq
     if (cmd === "closereq") {
       if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
       const embed = new EmbedBuilder()
@@ -683,14 +795,14 @@ client.on("messageCreate", async message => {
     }
 
     // -rename new-name
+    // FIXED: No longer includes the username in the channel name — just the emoji + new-name
     if (cmd === "rename") {
       if (!isAllowedRename) return staffReply("❌ Only ticket or order support staff can use this.");
       const validCategories = [TICKET_CATEGORY, ORDER_TICKET_CATEGORY];
       if (!validCategories.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
       const newName = args.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "");
       if (!newName) return staffReply("❌ Invalid name provided.");
-      const renamedBy = message.author.username.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const finalName = `🟢-${renamedBy}-${newName}`;
+      const finalName = `🟢-${newName}`;
       await message.channel.setName(finalName).catch(() => {});
       claimedTickets.set(message.channel.id, message.author.tag);
       const embed = new EmbedBuilder()
@@ -699,7 +811,6 @@ client.on("messageCreate", async message => {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // -status
     if (cmd === "status") {
       const entry = statusData[message.author.id];
       if (!entry) return staffReply("You don't have an order status set yet. Please open a ticket if you have an active order.");
@@ -713,7 +824,6 @@ client.on("messageCreate", async message => {
       return;
     }
 
-    // -statusupdate @user pending/inprogress/completed
     if (cmd === "statusupdate") {
       if (!isStatusStaff) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
@@ -728,7 +838,6 @@ client.on("messageCreate", async message => {
       return staffReply(`✅ Updated ${user.tag}'s status to **${statusMap[newStatus]}**.`);
     }
 
-    // -taxcalc amount
     if (cmd === "taxcalc") {
       const amount = parseInt(args[0]);
       if (isNaN(amount) || amount <= 0) return staffReply("❌ Please provide a valid positive amount of Robux.");
@@ -741,7 +850,6 @@ client.on("messageCreate", async message => {
       return;
     }
 
-    // -getid @user or username
     if (cmd === "getid") {
       const user = await resolveUser(args[0]);
       if (!user) return staffReply("❌ User not found.");
@@ -756,7 +864,7 @@ client.on("messageCreate", async message => {
     return;
   }
 
-  // ===== AUTOMOD (only runs if not a prefix command) =====
+  // ===== AUTOMOD =====
   if (message.member && message.member.roles.cache.some(r => EXEMPT_ROLES.includes(r.id))) return;
   const member = message.member;
   const isNewMember = member && (Date.now() - member.joinedTimestamp) / (1000 * 60 * 60 * 24) < NEW_MEMBER_DAYS;
@@ -1051,7 +1159,21 @@ const commands = [
         { name: '✅ Completed', value: 'completed' }
       )),
   new SlashCommandBuilder().setName('taxcalc').setDescription('Calculate the Roblox tax on a payment')
-    .addIntegerOption(o => o.setName('robux').setDescription('Amount of Robux you want to receive').setRequired(true))
+    .addIntegerOption(o => o.setName('robux').setDescription('Amount of Robux you want to receive').setRequired(true)),
+
+  // ===== GIVEAWAY — slash only, no prefix version =====
+  new SlashCommandBuilder().setName('giveaway').setDescription('Start a giveaway')
+    .addStringOption(o => o.setName('title').setDescription('Title of the giveaway').setRequired(true))
+    .addStringOption(o => o.setName('description').setDescription('Description shown in the embed').setRequired(true))
+    .addStringOption(o => o.setName('prize').setDescription('What the winner receives e.g. 20,000 Robux').setRequired(true))
+    .addStringOption(o => o.setName('server_name').setDescription('Name of the server shown on the link button e.g. DevHub').setRequired(true))
+    .addStringOption(o => o.setName('server_link').setDescription('Discord invite link shown in the embed').setRequired(true))
+    .addIntegerOption(o => o.setName('duration_minutes').setDescription('How long the giveaway lasts in minutes').setRequired(true))
+    .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true)),
+
+  // ===== REROLL — slash only, reply to the giveaway message =====
+  new SlashCommandBuilder().setName('reroll').setDescription('Reroll a giveaway winner — reply to the giveaway message first')
+    .addStringOption(o => o.setName('message_id').setDescription('The message ID of the giveaway to reroll').setRequired(true))
 ];
 
 // ===== ANTI NUKE FUNCTIONS =====
@@ -1386,6 +1508,7 @@ client.on('interactionCreate', async interaction => {
     }
 
     // RENAME
+    // FIXED: Channel name is now just 🟢-{new-name} with no username prefix
     if (interaction.commandName === "rename") {
       const allowedRoles = [TICKET_SUPPORT_ROLE, ORDER_SUPPORT_ROLE];
       if (!interaction.member.roles.cache.some(r => allowedRoles.includes(r.id)))
@@ -1395,8 +1518,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({ content: "❌ This command can only be used inside a ticket channel.", flags: 64 });
       const newName = interaction.options.getString("new-name").toLowerCase().replace(/[^a-z0-9-]/g, "");
       if (!newName) return interaction.reply({ content: "❌ Invalid name provided.", flags: 64 });
-      const renamedBy = interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const finalName = `🟢-${renamedBy}-${newName}`;
+      const finalName = `🟢-${newName}`;
       await interaction.channel.setName(finalName).catch(() => {});
       claimedTickets.set(interaction.channel.id, interaction.user.tag);
       const embed = new EmbedBuilder()
@@ -1475,11 +1597,125 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
+    // ===== GIVEAWAY =====
+    // Only mods can start giveaways. No "-" prefix version exists.
+    if (interaction.commandName === "giveaway") {
+      if (!interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id)))
+        return interaction.reply({ content: "❌ No permission.", flags: 64 });
+
+      const title = interaction.options.getString("title");
+      const description = interaction.options.getString("description");
+      const prize = interaction.options.getString("prize");
+      const serverName = interaction.options.getString("server_name");
+      const serverLink = interaction.options.getString("server_link");
+      const durationMinutes = interaction.options.getInteger("duration_minutes");
+      const targetChannel = interaction.options.getChannel("channel");
+
+      // Validate it's a text channel
+      if (targetChannel.type !== ChannelType.GuildText)
+        return interaction.reply({ content: "❌ Please select a text channel.", flags: 64 });
+
+      // Validate the server link looks like a Discord invite
+      if (!serverLink.startsWith("https://discord.gg/") && !serverLink.startsWith("https://discord.com/invite/"))
+        return interaction.reply({ content: "❌ Server link must be a valid Discord invite URL (https://discord.gg/... or https://discord.com/invite/...).", flags: 64 });
+
+      const now = Date.now();
+      const endsAt = now + durationMinutes * 60 * 1000;
+
+      // Generate a short unique ID for this giveaway
+      const giveawayId = `gaw_${now}`;
+
+      // Store the giveaway data before posting so we can reference it
+      const giveaway = {
+        id: giveawayId,
+        title,
+        description,
+        prize,
+        serverName,
+        serverLink,
+        endsAt,
+        createdAt: now,
+        channelId: targetChannel.id,
+        messageId: null, // filled in after posting
+        entries: [],     // array of user IDs who clicked Join Giveaway
+        ended: false
+      };
+
+      // Build and post the embed + buttons
+      const embed = buildGiveawayEmbed(giveaway);
+      const components = buildGiveawayComponents(giveaway);
+
+      // Defer so we have time to post the giveaway message
+      await interaction.deferReply({ flags: 64 });
+
+      // Send @everyone ping first (matches the image), then the embed
+      const giveawayMessage = await targetChannel.send({
+        content: "@everyone",
+        embeds: [embed],
+        components: [components]
+      });
+
+      // Now save the message ID so we can find and edit it later
+      giveaway.messageId = giveawayMessage.id;
+      giveawayData[giveawayId] = giveaway;
+      saveGiveaways();
+
+      // Schedule the auto-conclude when time is up
+      setTimeout(() => concludeGiveaway(giveawayId), durationMinutes * 60 * 1000);
+
+      return interaction.editReply({ content: `✅ Giveaway posted in ${targetChannel}! It ends in ${durationMinutes} minute(s).` });
+    }
+
+    // ===== REROLL =====
+    // Mods use /reroll message_id:<id of the giveaway message> to pick a new winner
+    if (interaction.commandName === "reroll") {
+      if (!interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id)))
+        return interaction.reply({ content: "❌ No permission.", flags: 64 });
+
+      const messageId = interaction.options.getString("message_id");
+
+      // Find the giveaway that has this message ID
+      const giveaway = Object.values(giveawayData).find(g => g.messageId === messageId);
+      if (!giveaway)
+        return interaction.reply({ content: "❌ No giveaway found with that message ID. Make sure you copy the ID of the giveaway message itself.", flags: 64 });
+
+      if (!giveaway.ended)
+        return interaction.reply({ content: "❌ This giveaway has not ended yet.", flags: 64 });
+
+      await interaction.reply({ content: "🎲 Rerolling...", flags: 64 });
+      await concludeGiveaway(giveaway.id, interaction.user.tag);
+    }
+
     return;
   }
 
   // ===== BUTTONS & SELECT MENUS =====
   if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isModalSubmit()) return;
+
+  // ===== GIVEAWAY JOIN BUTTON =====
+  // When someone clicks "Join Giveaway", we add them to the entries list and update the entry count button
+  if (interaction.isButton() && interaction.customId.startsWith("giveaway_join_")) {
+    const giveawayId = interaction.customId.replace("giveaway_join_", "");
+    const giveaway = giveawayData[giveawayId];
+
+    if (!giveaway) return interaction.reply({ content: "❌ This giveaway no longer exists.", flags: 64 });
+    if (giveaway.ended) return interaction.reply({ content: "❌ This giveaway has already ended.", flags: 64 });
+
+    if (giveaway.entries.includes(interaction.user.id)) {
+      // User already entered — let them know privately
+      return interaction.reply({ content: "✅ You have already entered this giveaway!", flags: 64 });
+    }
+
+    // Add the user to entries
+    giveaway.entries.push(interaction.user.id);
+    saveGiveaways();
+
+    // Update the entry count on the disabled button by editing the message
+    const updatedComponents = buildGiveawayComponents(giveaway);
+    await interaction.message.edit({ components: [updatedComponents] }).catch(() => {});
+
+    return interaction.reply({ content: `🎉 You have entered the **${giveaway.title}** giveaway! Good luck!`, flags: 64 });
+  }
 
   // ===== APPLICATION APPROVE/DENY =====
   if (interaction.isButton() && interaction.customId.startsWith("appv2_")) {
