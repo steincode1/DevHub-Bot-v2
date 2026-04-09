@@ -300,26 +300,120 @@ client.once("ready", async () => {
   const panelChannel = await guild.channels.fetch(TICKET_PANEL_CHANNEL);
   if (!panelChannel) return;
 
-  const ticketEmbed = new EmbedBuilder()
-    .setColor("#2b2d31")
-    .setDescription(" Press this Dropdown Box to open your selected ticket! ")
-    .setFooter({ text: "Developer Hub • Support System" });
-
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId("ticket_select")
-      .setPlaceholder("Select a ticket type...")
-      .addOptions([
-        { label: "General Support", description: "Questions, help, or general issues", value: "general_ticket" },
-        { label: "Internal Affairs", description: "Report staff or serious concerns", value: "ia_ticket" },
-        { label: "Management", description: "Contact high command", value: "mgmt_ticket" }
-      ])
-  );
-
   const messages = await panelChannel.messages.fetch({ limit: 10 });
   const existing = messages.find(m => m.author.id === client.user.id);
   if (!existing) {
-    await panelChannel.send({ embeds: [ticketEmbed], components: [row] });
+
+    // ── EMBED 1: Header image ──
+    const headerEmbed = new EmbedBuilder()
+      .setColor("#2A5CFF")
+      .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490516882309255278/I4.webp");
+
+    // ── EMBED 2: Title + separator + welcome ──
+    const welcomeEmbed = new EmbedBuilder()
+      .setColor("#2A5CFF")
+      .setTitle("# <:d11:1490211876007841823> Server Support")
+      .setDescription(
+        "> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason."
+      );
+
+    // ── EMBED 3: General Support ──
+    const generalEmbed = new EmbedBuilder()
+      .setColor("#2A5CFF")
+      .setTitle("## General Support:")
+      .setDescription(
+        "> <:CF11:1488888964755492944> **Questions**\n" +
+        "> <:CF11:1488888964755492944> **Concerns**\n" +
+        "> <:CF11:1488888964755492944> **Member Report**"
+      );
+
+    const generalRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("show_general")
+        .setLabel("Available")
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(true)
+    );
+
+    // ── EMBED 4: Oversight Support ──
+    const oversightEmbed = new EmbedBuilder()
+      .setColor("#2A5CFF")
+      .setTitle("## Oversight Support:")
+      .setDescription(
+        "> <:CF11:1488888964755492944> **Employee Report**\n" +
+        "> <:CF11:1488888964755492944> **Scam Report**\n" +
+        "> <:CF11:1488888964755492944> **LOA Request**"
+      );
+
+    const oversightRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("show_oversight")
+        .setLabel("Available")
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(true)
+    );
+
+    // ── EMBED 5: Management Support ──
+    const managementEmbed = new EmbedBuilder()
+      .setColor("#2A5CFF")
+      .setTitle("## Management Support:")
+      .setDescription(
+        "> <:CF11:1488888964755492944> **High Rank Inquires**\n" +
+        "> <:CF11:1488888964755492944> **Role Request**\n" +
+        "> <:CF11:1488888964755492944> **Purchase Inquires**"
+      );
+
+    const managementRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("show_management")
+        .setLabel("Available")
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(true)
+    );
+
+    // ── EMBED 6: Please Read ──
+    const rulesEmbed = new EmbedBuilder()
+      .setColor("#2A5CFF")
+      .setTitle("## Please Read Before Opening a Ticket:")
+      .setDescription(
+        "> <:CF11:1488888964755492944> Do not __spam__ tickets\n" +
+        "> <:CF11:1488888964755492944> Provide __detailed__ information\n" +
+        "> <:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
+      );
+
+    const rulesRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("show_rules")
+        .setLabel("Please Read")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true)
+    );
+
+    // ── EMBED 7: Footer image ──
+    const footerEmbed = new EmbedBuilder()
+      .setColor("#2A5CFF")
+      .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp");
+
+    // ── Dropdown ──
+    const dropdownRow = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("ticket_select")
+        .setPlaceholder("Our Assistance")
+        .addOptions([
+          { label: "General Support", description: "Questions, help, or general issues", value: "general_ticket" },
+          { label: "Oversight Support", description: "Report staff or serious concerns", value: "ia_ticket" },
+          { label: "Management Support", description: "Contact high command", value: "mgmt_ticket" }
+        ])
+    );
+
+    await panelChannel.send({ embeds: [headerEmbed] });
+    await panelChannel.send({ embeds: [welcomeEmbed] });
+    await panelChannel.send({ embeds: [generalEmbed], components: [generalRow] });
+    await panelChannel.send({ embeds: [oversightEmbed], components: [oversightRow] });
+    await panelChannel.send({ embeds: [managementEmbed], components: [managementRow] });
+    await panelChannel.send({ embeds: [rulesEmbed], components: [rulesRow] });
+    await panelChannel.send({ embeds: [footerEmbed] });
+    await panelChannel.send({ components: [dropdownRow] });
   }
 
   const orderPanelChannel = await guild.channels.fetch(ORDER_PANEL_CHANNEL).catch(() => null);
