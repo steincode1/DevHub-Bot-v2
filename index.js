@@ -111,7 +111,6 @@ function addLog(userId, type, moderator, reason) {
 }
 
 // ===== GIVEAWAY HELPER =====
-// Builds the exact embed shown in the image
 function buildGiveawayEmbed(giveaway) {
   const now = Date.now();
   const endsAt = giveaway.endsAt;
@@ -132,19 +131,15 @@ function buildGiveawayEmbed(giveaway) {
     .setTitle(giveaway.title)
     .setDescription(
       giveaway.description + `\n\n` +
-      `<:CF11:1488888964755492944> <:linkk:1491888052610793734> **Server:** ${giveaway.serverLink}\n` +
-      `<:CF11:1488888964755492944> <:roblox:1491888168679772371> **Prize:** ${giveaway.prize}\n` +
-      `<:CF11:1488888964755492944> <:clockk:1491887992703418448> **Duration:** ${durationText}`
+      `• <:linkk:1491888052610793734> **Server:** ${giveaway.serverLink}\n` +
+      `• <:roblox:1491888168679772371> **Prize:** ${giveaway.prize}\n` +
+      `• <:clockk:1491887992703418448> **Duration:** ${durationText}`
     )
     .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
     .setColor("#2A5CFF")
     .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp");
 }
 
-// Builds the two buttons shown in the image:
-// 1. "Join Giveaway" (blue, clickable, tracks entries)
-// 2. "Join {serverName}" (grey/link button, opens serverLink)
-// 3. Entry count display (disabled grey button)
 function buildGiveawayComponents(giveaway) {
   const entryCount = giveaway.entries ? giveaway.entries.length : 0;
   return new ActionRowBuilder().addComponents(
@@ -164,7 +159,6 @@ function buildGiveawayComponents(giveaway) {
   );
 }
 
-// Picks a random winner from entries and sends the win message as a reply to the giveaway message
 async function concludeGiveaway(giveawayId, rerollBy = null) {
   const giveaway = giveawayData[giveawayId];
   if (!giveaway) return;
@@ -183,18 +177,15 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
       return;
     }
 
-    // Pick a random winner
     const winnerId = entries[Math.floor(Math.random() * entries.length)];
     const winner = await guild.members.fetch(winnerId).catch(() => null);
     const winnerMention = winner ? `<@${winnerId}>` : `<@${winnerId}>`;
 
-    // Update the embed to show it ended
     giveaway.ended = true;
     saveGiveaways();
 
     const endedEmbed = buildGiveawayEmbed(giveaway);
 
-    // Update the original message buttons — disable Join Giveaway, keep link, update count
     const endedRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`giveaway_join_${giveaway.id}`)
@@ -214,7 +205,6 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
 
     await message.edit({ embeds: [endedEmbed], components: [endedRow] }).catch(() => {});
 
-    // Reply to the original message with the winner announcement — matches the second image exactly
     const replyText = rerollBy
       ? `🎉 **Rerolled!** Congratulations ${winnerMention}! You won the **${giveaway.prize}**!`
       : `Congratulations ${winnerMention}! You won the **${giveaway.prize}**!`;
@@ -225,7 +215,6 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
   }
 }
 
-// On startup, reschedule any active giveaways that haven't ended yet
 function rescheduleGiveaways() {
   const now = Date.now();
   for (const id in giveawayData) {
@@ -304,97 +293,40 @@ client.once("ready", async () => {
   const existing = messages.find(m => m.author.id === client.user.id);
   if (!existing) {
 
-    // ── EMBED 1: Header image ──
+    // ── EMBED 1: Header image only ──
     const headerEmbed = new EmbedBuilder()
       .setColor("#2A5CFF")
       .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490516882309255278/I4.webp");
 
-    // ── EMBED 2: Title + separator + welcome ──
-    const welcomeEmbed = new EmbedBuilder()
+    // ── EMBED 2: All content in one embed + footer image + dropdown ──
+    const mainEmbed = new EmbedBuilder()
       .setColor("#2A5CFF")
-      .setTitle("# <:d11:1490211876007841823> Server Support")
+      .setTitle("<:d11:1490211876007841823> Server Support")
       .setDescription(
-        "> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason."
-      );
-
-    // ── EMBED 3: General Support ──
-    const generalEmbed = new EmbedBuilder()
-      .setColor("#2A5CFF")
-      .setTitle("## General Support:")
-      .setDescription(
+        "> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason.\n" +
+        "\n" +
+        "## General Support:\n" +
         "> <:CF11:1488888964755492944> **Questions**\n" +
         "> <:CF11:1488888964755492944> **Concerns**\n" +
-        "> <:CF11:1488888964755492944> **Member Report**"
-      );
-
-    const generalRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("show_general")
-        .setLabel("Available")
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(true)
-    );
-
-    // ── EMBED 4: Oversight Support ──
-    const oversightEmbed = new EmbedBuilder()
-      .setColor("#2A5CFF")
-      .setTitle("## Oversight Support:")
-      .setDescription(
+        "> <:CF11:1488888964755492944> **Member Report**\n" +
+        "\n" +
+        "## Oversight Support:\n" +
         "> <:CF11:1488888964755492944> **Employee Report**\n" +
         "> <:CF11:1488888964755492944> **Scam Report**\n" +
-        "> <:CF11:1488888964755492944> **LOA Request**"
-      );
-
-    const oversightRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("show_oversight")
-        .setLabel("Available")
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(true)
-    );
-
-    // ── EMBED 5: Management Support ──
-    const managementEmbed = new EmbedBuilder()
-      .setColor("#2A5CFF")
-      .setTitle("## Management Support:")
-      .setDescription(
+        "> <:CF11:1488888964755492944> **LOA Request**\n" +
+        "\n" +
+        "## Management Support:\n" +
         "> <:CF11:1488888964755492944> **High Rank Inquires**\n" +
         "> <:CF11:1488888964755492944> **Role Request**\n" +
-        "> <:CF11:1488888964755492944> **Purchase Inquires**"
-      );
-
-    const managementRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("show_management")
-        .setLabel("Available")
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(true)
-    );
-
-    // ── EMBED 6: Please Read ──
-    const rulesEmbed = new EmbedBuilder()
-      .setColor("#2A5CFF")
-      .setTitle("## Please Read Before Opening a Ticket:")
-      .setDescription(
+        "> <:CF11:1488888964755492944> **Purchase Inquires**\n" +
+        "\n" +
+        "## Please Read Before Opening a Ticket:\n" +
         "> <:CF11:1488888964755492944> Do not __spam__ tickets\n" +
         "> <:CF11:1488888964755492944> Provide __detailed__ information\n" +
         "> <:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
-      );
-
-    const rulesRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("show_rules")
-        .setLabel("Please Read")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(true)
-    );
-
-    // ── EMBED 7: Footer image ──
-    const footerEmbed = new EmbedBuilder()
-      .setColor("#2A5CFF")
+      )
       .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp");
 
-    // ── Dropdown ──
     const dropdownRow = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId("ticket_select")
@@ -407,13 +339,7 @@ client.once("ready", async () => {
     );
 
     await panelChannel.send({ embeds: [headerEmbed] });
-    await panelChannel.send({ embeds: [welcomeEmbed] });
-    await panelChannel.send({ embeds: [generalEmbed], components: [generalRow] });
-    await panelChannel.send({ embeds: [oversightEmbed], components: [oversightRow] });
-    await panelChannel.send({ embeds: [managementEmbed], components: [managementRow] });
-    await panelChannel.send({ embeds: [rulesEmbed], components: [rulesRow] });
-    await panelChannel.send({ embeds: [footerEmbed] });
-    await panelChannel.send({ components: [dropdownRow] });
+    await panelChannel.send({ embeds: [mainEmbed], components: [dropdownRow] });
   }
 
   const orderPanelChannel = await guild.channels.fetch(ORDER_PANEL_CHANNEL).catch(() => null);
@@ -438,7 +364,6 @@ client.once("ready", async () => {
     }
   }
 
-  // Reschedule any giveaways that were running before restart
   rescheduleGiveaways();
 });
 
@@ -885,8 +810,6 @@ client.on("messageCreate", async message => {
       return message.channel.send({ embeds: [embed], components: [row] });
     }
 
-    // -rename new-name
-    // FIXED: No longer includes the username in the channel name — just the emoji + new-name
     if (cmd === "rename") {
       if (!isAllowedRename) return staffReply("❌ Only ticket or order support staff can use this.");
       const validCategories = [TICKET_CATEGORY, ORDER_TICKET_CATEGORY];
@@ -1252,7 +1175,7 @@ const commands = [
   new SlashCommandBuilder().setName('taxcalc').setDescription('Calculate the Roblox tax on a payment')
     .addIntegerOption(o => o.setName('robux').setDescription('Amount of Robux you want to receive').setRequired(true)),
 
-  // ===== GIVEAWAY — slash only, no prefix version =====
+  // ===== GIVEAWAY =====
   new SlashCommandBuilder().setName('giveaway').setDescription('Start a giveaway')
     .addStringOption(o => o.setName('title').setDescription('Title of the giveaway').setRequired(true))
     .addStringOption(o => o.setName('description').setDescription('Description shown in the embed').setRequired(true))
@@ -1269,8 +1192,8 @@ const commands = [
       ))
     .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true)),
 
-  // ===== REROLL — slash only, reply to the giveaway message =====
-  new SlashCommandBuilder().setName('reroll').setDescription('Reroll a giveaway winner — reply to the giveaway message first')
+  // ===== REROLL =====
+  new SlashCommandBuilder().setName('reroll').setDescription('Reroll a giveaway winner')
     .addStringOption(o => o.setName('message_id').setDescription('The message ID of the giveaway to reroll').setRequired(true))
 ];
 
@@ -1606,7 +1529,6 @@ client.on('interactionCreate', async interaction => {
     }
 
     // RENAME
-    // FIXED: Channel name is now just 🟢-{new-name} with no username prefix
     if (interaction.commandName === "rename") {
       const allowedRoles = [TICKET_SUPPORT_ROLE, ORDER_SUPPORT_ROLE];
       if (!interaction.member.roles.cache.some(r => allowedRoles.includes(r.id)))
@@ -1696,7 +1618,6 @@ client.on('interactionCreate', async interaction => {
     }
 
     // ===== GIVEAWAY =====
-    // Only mods can start giveaways. No "-" prefix version exists.
     if (interaction.commandName === "giveaway") {
       if (!interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id)))
         return interaction.reply({ content: "❌ No permission.", flags: 64 });
@@ -1709,21 +1630,16 @@ client.on('interactionCreate', async interaction => {
       const durationMinutes = parseInt(interaction.options.getString("duration"));
       const targetChannel = interaction.options.getChannel("channel");
 
-      // Validate it's a text channel
       if (targetChannel.type !== ChannelType.GuildText)
         return interaction.reply({ content: "❌ Please select a text channel.", flags: 64 });
 
-      // Validate the server link looks like a Discord invite
       if (!serverLink.startsWith("https://discord.gg/") && !serverLink.startsWith("https://discord.com/invite/"))
         return interaction.reply({ content: "❌ Server link must be a valid Discord invite URL (https://discord.gg/... or https://discord.com/invite/...).", flags: 64 });
 
       const now = Date.now();
       const endsAt = now + durationMinutes * 60 * 1000;
-
-      // Generate a short unique ID for this giveaway
       const giveawayId = `gaw_${now}`;
 
-      // Store the giveaway data before posting so we can reference it
       const giveaway = {
         id: giveawayId,
         title,
@@ -1734,48 +1650,40 @@ client.on('interactionCreate', async interaction => {
         endsAt,
         createdAt: now,
         channelId: targetChannel.id,
-        messageId: null, // filled in after posting
-        entries: [],     // array of user IDs who clicked Join Giveaway
+        messageId: null,
+        entries: [],
         ended: false
       };
 
-      // Build and post the embed + buttons
       const embed = buildGiveawayEmbed(giveaway);
       const components = buildGiveawayComponents(giveaway);
 
-      // Defer so we have time to post the giveaway message
       await interaction.deferReply({ flags: 64 });
 
-      // Send @everyone ping first (matches the image), then the embed
       const giveawayMessage = await targetChannel.send({
         content: "@everyone",
         embeds: [embed],
         components: [components]
       });
 
-      // Now save the message ID so we can find and edit it later
       giveaway.messageId = giveawayMessage.id;
       giveawayData[giveawayId] = giveaway;
       saveGiveaways();
 
-      // Schedule the auto-conclude when time is up
       setTimeout(() => concludeGiveaway(giveawayId), durationMinutes * 60 * 1000);
 
       return interaction.editReply({ content: `✅ Giveaway posted in ${targetChannel}! It ends in ${durationMinutes} minute(s).` });
     }
 
     // ===== REROLL =====
-    // Mods use /reroll message_id:<id of the giveaway message> to pick a new winner
     if (interaction.commandName === "reroll") {
       if (!interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id)))
         return interaction.reply({ content: "❌ No permission.", flags: 64 });
 
       const messageId = interaction.options.getString("message_id");
-
-      // Find the giveaway that has this message ID
       const giveaway = Object.values(giveawayData).find(g => g.messageId === messageId);
       if (!giveaway)
-        return interaction.reply({ content: "❌ No giveaway found with that message ID. Make sure you copy the ID of the giveaway message itself.", flags: 64 });
+        return interaction.reply({ content: "❌ No giveaway found with that message ID.", flags: 64 });
 
       if (!giveaway.ended)
         return interaction.reply({ content: "❌ This giveaway has not ended yet.", flags: 64 });
@@ -1791,7 +1699,6 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isModalSubmit()) return;
 
   // ===== GIVEAWAY JOIN BUTTON =====
-  // When someone clicks "Join Giveaway", we add them to the entries list and update the entry count button
   if (interaction.isButton() && interaction.customId.startsWith("giveaway_join_")) {
     const giveawayId = interaction.customId.replace("giveaway_join_", "");
     const giveaway = giveawayData[giveawayId];
@@ -1800,15 +1707,12 @@ client.on('interactionCreate', async interaction => {
     if (giveaway.ended) return interaction.reply({ content: "❌ This giveaway has already ended.", flags: 64 });
 
     if (giveaway.entries.includes(interaction.user.id)) {
-      // User already entered — let them know privately
       return interaction.reply({ content: "✅ You have already entered this giveaway!", flags: 64 });
     }
 
-    // Add the user to entries
     giveaway.entries.push(interaction.user.id);
     saveGiveaways();
 
-    // Update the entry count on the disabled button by editing the message
     const updatedComponents = buildGiveawayComponents(giveaway);
     await interaction.message.edit({ components: [updatedComponents] }).catch(() => {});
 
@@ -1990,7 +1894,7 @@ client.on('interactionCreate', async interaction => {
     const cleanName = user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
     let name, title, ticketDescription;
     if (type === "general_ticket") { name = `🔴-general-${cleanName}`; title = "General Support"; ticketDescription = "Thank you for opening a ticket, a staff member will be with you shortly. If you could provide the reason why you opened it while waiting that would be great, thanks."; }
-    if (type === "ia_ticket") { name = `🔴-ia-${cleanName}`; title = "Internal Affairs Support"; ticketDescription = "Thank you for opening a ticket, an IA member will be with you shortly. Please explain why you opened the ticket while waiting."; }
+    if (type === "ia_ticket") { name = `🔴-ia-${cleanName}`; title = "Oversight Support"; ticketDescription = "Thank you for opening a ticket, an oversight member will be with you shortly. Please explain why you opened the ticket while waiting."; }
     if (type === "mgmt_ticket") { name = `🔴-mgmt-${cleanName}`; title = "Management Support"; ticketDescription = "Thank you for opening a ticket, a HR member will be with you shortly. Please explain why you opened the ticket while waiting."; }
     const channel = await guild.channels.create({
       name, type: ChannelType.GuildText, parent: TICKET_CATEGORY,
