@@ -133,13 +133,12 @@ function buildGiveawayEmbed(giveaway) {
     .setDescription(giveaway.description)
     .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
     .addFields(
-      { name: "<:linkk:1491888052610793734> **Server**", value: giveaway.serverLink, inline: false },
-      { name: "<:roblox:1491888168679772371> **Prize**", value: giveaway.prize, inline: false },
-      { name: "<:clockk:1491887992703418448> **Duration**", value: durationText, inline: false }
+      { name: "<:linkk:1491888052610793734> Server", value: giveaway.serverLink, inline: true },
+      { name: "<:roblox:1491888168679772371> Prize", value: giveaway.prize, inline: true },
+      { name: "<:clockk:1491887992703418448> Duration", value: durationText, inline: true }
     )
     .setColor("#2A5CFF")
-    .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp")
-    .setDescription((giveaway.description || "") + `\n\n-# *Disclaimer - to enter this giveaway you need to join ${giveaway.serverName}`);
+    .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp");
 }
 
 // Builds the two buttons shown in the image:
