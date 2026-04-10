@@ -89,7 +89,9 @@ const LEVEL_DB = "./levels.json";
 const INVITE_DB = "./invites.json";
 const STATUS_DB = "./statuses.json";
 const GIVEAWAY_DB = "./giveaways.json";
+const COOLDOWN_DB = "./applicationCooldowns.json";
 
+let applicationCooldowns = fs.existsSync(COOLDOWN_DB) ? new Map(Object.entries(JSON.parse(fs.readFileSync(COOLDOWN_DB)))) : new Map();
 let strikeData = fs.existsSync(STRIKE_DB) ? JSON.parse(fs.readFileSync(STRIKE_DB)) : {};
 let levelData = fs.existsSync(LEVEL_DB) ? JSON.parse(fs.readFileSync(LEVEL_DB)) : {};
 let inviteData = fs.existsSync(INVITE_DB) ? JSON.parse(fs.readFileSync(INVITE_DB)) : {};
@@ -103,6 +105,7 @@ function saveInvites() { fs.writeFileSync(INVITE_DB, JSON.stringify(inviteData, 
 function saveLogs() { fs.writeFileSync(LOG_DB, JSON.stringify(playerLogs, null, 2)); }
 function saveStatuses() { fs.writeFileSync(STATUS_DB, JSON.stringify(statusData, null, 2)); }
 function saveGiveaways() { fs.writeFileSync(GIVEAWAY_DB, JSON.stringify(giveawayData, null, 2)); }
+function saveCooldowns() { fs.writeFileSync(COOLDOWN_DB, JSON.stringify(Object.fromEntries(applicationCooldowns))); }
 
 function addLog(userId, type, moderator, reason) {
   if (!playerLogs[userId]) playerLogs[userId] = [];
@@ -229,7 +232,6 @@ function rescheduleGiveaways() {
 // ===== APPLICATION SESSION TRACKING =====
 const applicationSessions = new Map();
 const APPLICATION_COOLDOWN_MS = 48 * 60 * 60 * 1000;
-const applicationCooldowns = new Map();
 const APPLICATION_TIMEOUT_MS = 45 * 60 * 1000;
 
 function clearApplicationSession(userId, sendTimeoutMessage = false) {
@@ -293,54 +295,47 @@ client.once("ready", async () => {
   const existing = messages.find(m => m.author.id === client.user.id);
   if (!existing) {
 
-    // ── EMBED 1: Header image only ──
-    const headerEmbed = new EmbedBuilder()
-      .setColor("#2A5CFF")
-      .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490516882309255278/I4.webp");
+   const combinedEmbed = new EmbedBuilder()
+  .setColor("#2A5CFF")
+  .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490516882309255278/I4.webp")
+  .setDescription(
+    "**<:d11:1490211876007841823> Server Support**\n\n" +
+    "> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason.\n" +
+    "\n" +
+    "## General Support:\n" +
+    "> <:CF11:1488888964755492944> **Questions**\n" +
+    "> <:CF11:1488888964755492944> **Concerns**\n" +
+    "> <:CF11:1488888964755492944> **Member Report**\n" +
+    "\n" +
+    "## Oversight Support:\n" +
+    "> <:CF11:1488888964755492944> **Employee Report**\n" +
+    "> <:CF11:1488888964755492944> **Scam Report**\n" +
+    "> <:CF11:1488888964755492944> **LOA Request**\n" +
+    "\n" +
+    "## Management Support:\n" +
+    "> <:CF11:1488888964755492944> **High Rank Inquires**\n" +
+    "> <:CF11:1488888964755492944> **Role Request**\n" +
+    "> <:CF11:1488888964755492944> **Purchase Inquires**\n" +
+    "\n" +
+    "## Please Read Before Opening a Ticket:\n" +
+    "> <:CF11:1488888964755492944> Do not __spam__ tickets\n" +
+    "> <:CF11:1488888964755492944> Provide __detailed__ information\n" +
+    "> <:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
+  );
 
-    // ── EMBED 2: All content in one embed + footer image + dropdown ──
-    const mainEmbed = new EmbedBuilder()
-      .setColor("#2A5CFF")
-      .setTitle("<:d11:1490211876007841823> Server Support")
-      .setDescription(
-        "> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason.\n" +
-        "\n" +
-        "## General Support:\n" +
-        "> <:CF11:1488888964755492944> **Questions**\n" +
-        "> <:CF11:1488888964755492944> **Concerns**\n" +
-        "> <:CF11:1488888964755492944> **Member Report**\n" +
-        "\n" +
-        "## Oversight Support:\n" +
-        "> <:CF11:1488888964755492944> **Employee Report**\n" +
-        "> <:CF11:1488888964755492944> **Scam Report**\n" +
-        "> <:CF11:1488888964755492944> **LOA Request**\n" +
-        "\n" +
-        "## Management Support:\n" +
-        "> <:CF11:1488888964755492944> **High Rank Inquires**\n" +
-        "> <:CF11:1488888964755492944> **Role Request**\n" +
-        "> <:CF11:1488888964755492944> **Purchase Inquires**\n" +
-        "\n" +
-        "## Please Read Before Opening a Ticket:\n" +
-        "> <:CF11:1488888964755492944> Do not __spam__ tickets\n" +
-        "> <:CF11:1488888964755492944> Provide __detailed__ information\n" +
-        "> <:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
-      )
-      .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp");
+const dropdownRow = new ActionRowBuilder().addComponents(
+  new StringSelectMenuBuilder()
+    .setCustomId("ticket_select")
+    .setPlaceholder("Our Assistance")
+    .addOptions([
+      { label: "General Support", description: "Questions, help, or general issues", value: "general_ticket" },
+      { label: "Oversight Support", description: "Report staff or serious concerns", value: "ia_ticket" },
+      { label: "Management Support", description: "Contact high command", value: "mgmt_ticket" }
+    ])
+);
 
-    const dropdownRow = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId("ticket_select")
-        .setPlaceholder("Our Assistance")
-        .addOptions([
-          { label: "General Support", description: "Questions, help, or general issues", value: "general_ticket" },
-          { label: "Oversight Support", description: "Report staff or serious concerns", value: "ia_ticket" },
-          { label: "Management Support", description: "Contact high command", value: "mgmt_ticket" }
-        ])
-    );
-
-    await panelChannel.send({ embeds: [headerEmbed] });
-    await panelChannel.send({ embeds: [mainEmbed], components: [dropdownRow] });
-  }
+await panelChannel.send({ embeds: [combinedEmbed], components: [dropdownRow] });
+}
 
   const orderPanelChannel = await guild.channels.fetch(ORDER_PANEL_CHANNEL).catch(() => null);
   if (orderPanelChannel) {
@@ -1025,6 +1020,7 @@ client.on("messageCreate", async message => {
         return;
       } else {
         applicationCooldowns.delete(userId);
+saveCooldowns();
       }
     }
     applicationSessions.set(userId, { state: "instructions", answers: [], timeoutTimer: null });
@@ -1706,9 +1702,11 @@ client.on('interactionCreate', async interaction => {
 
     // Always re-read from disk so data is never stale after restarts
     if (fs.existsSync(GIVEAWAY_DB)) {
-      const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
-      Object.assign(giveawayData, fresh);
-    }
+  const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
+  for (const id in fresh) {
+    if (!giveawayData[id]) giveawayData[id] = fresh[id];
+  }
+}
 
     const giveaway = giveawayData[giveawayId];
 
@@ -1743,9 +1741,11 @@ client.on('interactionCreate', async interaction => {
     const giveawayId = interaction.customId.replace("giveaway_leave_", "");
 
     if (fs.existsSync(GIVEAWAY_DB)) {
-      const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
-      Object.assign(giveawayData, fresh);
-    }
+  const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
+  for (const id in fresh) {
+    if (!giveawayData[id]) giveawayData[id] = fresh[id];
+  }
+}
 
     const giveaway = giveawayData[giveawayId];
 
@@ -1788,6 +1788,7 @@ client.on('interactionCreate', async interaction => {
 }
     if (action === "deny") {
       applicationCooldowns.set(userId, { deniedAt: Date.now() });
+      saveCooldowns();
       await targetUser?.send("Unfortunately you have not been selected to join the Designer Team. You can re-apply in 48 hours if you would like.").catch(() => {});
       return interaction.update({ content: `❌ Denied by ${interaction.user.tag}`, components: [] });
     }
