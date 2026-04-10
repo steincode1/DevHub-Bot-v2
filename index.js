@@ -1779,15 +1779,13 @@ client.on('interactionCreate', async interaction => {
     const action = parts[1];
     const userId = parts[2];
     const targetUser = await client.users.fetch(userId).catch(() => null);
-    if (action === "approve") {
-      const member = await interaction.guild.members.fetch(userId).catch(() => null);
-      if (member) {
-        await member.roles.add(DESIGNER_ROLE_ID).catch(() => {});
-        await member.roles.add("1489098884700700793").catch(() => {});
-        await targetUser?.send("Congratulations on passing the Designer Application! Welcome to our team and we can't wait for you to start. You can view all information in the staff channel and if you have any questions ask a Senior Designer or the Lead Designer.").catch(() => {});
-      }
-      return interaction.update({ content: `✅ Approved by ${interaction.user.tag}`, components: [] });
-    }
+   if (action === "approve") {
+  const member = await interaction.guild.members.fetch(userId).catch(() => null);
+  if (member) {
+    await targetUser?.send("Congratulations! You have netered stage 2 of the application. Please open a **Management** Ticket to start your interview.").catch(() => {});
+  }
+  return interaction.update({ content: `✅ Approved by ${interaction.user.tag}`, components: [] });
+}
     if (action === "deny") {
       applicationCooldowns.set(userId, { deniedAt: Date.now() });
       await targetUser?.send("Unfortunately you have not been selected to join the Designer Team. You can re-apply in 48 hours if you would like.").catch(() => {});
