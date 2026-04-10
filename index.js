@@ -294,48 +294,43 @@ client.once("ready", async () => {
   const messages = await panelChannel.messages.fetch({ limit: 10 });
   const existing = messages.find(m => m.author.id === client.user.id);
   if (!existing) {
-
-   const combinedEmbed = new EmbedBuilder()
-  .setColor("#2A5CFF")
-  .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490516882309255278/I4.webp")
-  .setDescription(
-    "**<:d11:1490211876007841823> Server Support**\n\n" +
-    "> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason.\n" +
-    "\n" +
-    "## General Support:\n" +
-    "> <:CF11:1488888964755492944> **Questions**\n" +
-    "> <:CF11:1488888964755492944> **Concerns**\n" +
-    "> <:CF11:1488888964755492944> **Member Report**\n" +
-    "\n" +
-    "## Oversight Support:\n" +
-    "> <:CF11:1488888964755492944> **Employee Report**\n" +
-    "> <:CF11:1488888964755492944> **Scam Report**\n" +
-    "> <:CF11:1488888964755492944> **LOA Request**\n" +
-    "\n" +
-    "## Management Support:\n" +
-    "> <:CF11:1488888964755492944> **High Rank Inquires**\n" +
-    "> <:CF11:1488888964755492944> **Role Request**\n" +
-    "> <:CF11:1488888964755492944> **Purchase Inquires**\n" +
-    "\n" +
-    "## Please Read Before Opening a Ticket:\n" +
-    "> <:CF11:1488888964755492944> Do not __spam__ tickets\n" +
-    "> <:CF11:1488888964755492944> Provide __detailed__ information\n" +
-    "> <:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
-  );
-
-const dropdownRow = new ActionRowBuilder().addComponents(
-  new StringSelectMenuBuilder()
-    .setCustomId("ticket_select")
-    .setPlaceholder("Our Assistance")
-    .addOptions([
-      { label: "General Support", description: "Questions, help, or general issues", value: "general_ticket" },
-      { label: "Oversight Support", description: "Report staff or serious concerns", value: "ia_ticket" },
-      { label: "Management Support", description: "Contact high command", value: "mgmt_ticket" }
-    ])
-);
-
-await panelChannel.send({ embeds: [combinedEmbed], components: [dropdownRow] });
-}
+    // ===== COMPONENTS V2 TICKET PANEL =====
+    await panelChannel.send({
+      flags: 32768,
+      components: [
+        {
+          type: 17,
+          components: [
+            {
+              type: 12,
+              items: [{ media: { url: "https://cdn.discordapp.com/attachments/1487555326713528494/1490516882309255278/I4.webp" } }]
+            },
+            {
+              type: 10,
+              content: "## <:d11:1490211876007841823> Server Support\n\n> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason.\n\n## General Support:\n> <:CF11:1488888964755492944> **Questions**\n> <:CF11:1488888964755492944> **Concerns**\n> <:CF11:1488888964755492944> **Member Report**\n\n## Oversight Support:\n> <:CF11:1488888964755492944> **Employee Report**\n> <:CF11:1488888964755492944> **Scam Report**\n> <:CF11:1488888964755492944> **LOA Request**\n\n## Management Support:\n> <:CF11:1488888964755492944> **High Rank Inquires**\n> <:CF11:1488888964755492944> **Role Request**\n> <:CF11:1488888964755492944> **Purchase Inquires**\n\n## Please Read Before Opening a Ticket:\n> <:CF11:1488888964755492944> Do not __spam__ tickets\n> <:CF11:1488888964755492944> Provide __detailed__ information\n> <:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
+            },
+            {
+              type: 12,
+              items: [{ media: { url: "https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp" } }]
+            },
+            {
+              type: 14
+            },
+            {
+              type: 3,
+              custom_id: "ticket_select",
+              placeholder: "Our Assistance",
+              options: [
+                { label: "General Support", description: "Questions, help, or general issues", value: "general_ticket" },
+                { label: "Oversight Support", description: "Report staff or serious concerns", value: "ia_ticket" },
+                { label: "Management Support", description: "Contact high command", value: "mgmt_ticket" }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+  }
 
   const orderPanelChannel = await guild.channels.fetch(ORDER_PANEL_CHANNEL).catch(() => null);
   if (orderPanelChannel) {
@@ -819,7 +814,8 @@ client.on("messageCreate", async message => {
       const embed = new EmbedBuilder()
         .setTitle("Ticket Renamed").setDescription(`This ticket has been renamed to **${finalName}** by ${message.author}.`)
         .setColor("#2A5CFF").setTimestamp();
-      return message.channel.send({ embeds: [embed] });
+      await message.author.send({ embeds: [embed] }).catch(() => {});
+      return;
     }
 
     if (cmd === "status") {
@@ -1020,7 +1016,7 @@ client.on("messageCreate", async message => {
         return;
       } else {
         applicationCooldowns.delete(userId);
-saveCooldowns();
+        saveCooldowns();
       }
     }
     applicationSessions.set(userId, { state: "instructions", answers: [], timeoutTimer: null });
@@ -1700,13 +1696,12 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isButton() && interaction.customId.replace("giveaway_join_", "").startsWith("gaw_")) {
     const giveawayId = interaction.customId.replace("giveaway_join_", "");
 
-    // Always re-read from disk so data is never stale after restarts
     if (fs.existsSync(GIVEAWAY_DB)) {
-  const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
-  for (const id in fresh) {
-    if (!giveawayData[id]) giveawayData[id] = fresh[id];
-  }
-}
+      const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
+      for (const id in fresh) {
+        if (!giveawayData[id]) giveawayData[id] = fresh[id];
+      }
+    }
 
     const giveaway = giveawayData[giveawayId];
 
@@ -1736,16 +1731,16 @@ client.on('interactionCreate', async interaction => {
     return interaction.reply({ content: `🎉 You have entered the **${giveaway.title}** giveaway! Good luck!`, flags: 64 });
   }
 
-// ===== GIVEAWAY LEAVE BUTTON =====
+  // ===== GIVEAWAY LEAVE BUTTON =====
   if (interaction.isButton() && interaction.customId.startsWith("giveaway_leave_")) {
     const giveawayId = interaction.customId.replace("giveaway_leave_", "");
 
     if (fs.existsSync(GIVEAWAY_DB)) {
-  const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
-  for (const id in fresh) {
-    if (!giveawayData[id]) giveawayData[id] = fresh[id];
-  }
-}
+      const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
+      for (const id in fresh) {
+        if (!giveawayData[id]) giveawayData[id] = fresh[id];
+      }
+    }
 
     const giveaway = giveawayData[giveawayId];
 
@@ -1770,7 +1765,7 @@ client.on('interactionCreate', async interaction => {
 
     return interaction.reply({ content: `👋 You have left the **${giveaway.title}** giveaway.`, flags: 64 });
   }
-  
+
   // ===== APPLICATION APPROVE/DENY =====
   if (interaction.isButton() && interaction.customId.startsWith("appv2_")) {
     const isMod = interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id));
@@ -1779,13 +1774,13 @@ client.on('interactionCreate', async interaction => {
     const action = parts[1];
     const userId = parts[2];
     const targetUser = await client.users.fetch(userId).catch(() => null);
-   if (action === "approve") {
-  const member = await interaction.guild.members.fetch(userId).catch(() => null);
-  if (member) {
-    await targetUser?.send("Congratulations! You have netered stage 2 of the application. Please open a **Management** Ticket to start your interview.").catch(() => {});
-  }
-  return interaction.update({ content: `✅ Approved by ${interaction.user.tag}`, components: [] });
-}
+    if (action === "approve") {
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (member) {
+        await targetUser?.send("Congratulations! You have entered stage 2 of the application. Please open a **Management** Ticket to start your interview.").catch(() => {});
+      }
+      return interaction.update({ content: `✅ Approved by ${interaction.user.tag}`, components: [] });
+    }
     if (action === "deny") {
       applicationCooldowns.set(userId, { deniedAt: Date.now() });
       saveCooldowns();
