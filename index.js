@@ -771,7 +771,9 @@ client.on("messageCreate", async message => {
         await message.channel.setName(`🟢-${message.channel.name.replace("🔴-", "")}`).catch(() => {});
       }
       const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${message.author}.`).setColor("#2A5CFF").setTimestamp();
-      return message.channel.send({ embeds: [embed] });
+      const m = await message.channel.send({ embeds: [embed] });
+      setTimeout(() => m.delete().catch(() => {}), 5000);
+      return;
     }
 
     if (cmd === "close") {
@@ -1545,7 +1547,7 @@ client.on('interactionCreate', async interaction => {
         .setTitle("Ticket Renamed")
         .setDescription(`This ticket has been renamed to **${finalName}** by ${interaction.user}.`)
         .setColor("#2A5CFF").setTimestamp();
-      return interaction.reply({ embeds: [embed] });
+      return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     // GETID
@@ -1699,15 +1701,32 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isModalSubmit()) return;
 
   // ===== GIVEAWAY JOIN BUTTON =====
-  if (interaction.isButton() && interaction.customId.startsWith("giveaway_join_")) {
+  if (interaction.isButton() && interaction.customId.replace("giveaway_join_", "").startsWith("gaw_")) {
     const giveawayId = interaction.customId.replace("giveaway_join_", "");
+
+    // Always re-read from disk so data is never stale after restarts
+    if (fs.existsSync(GIVEAWAY_DB)) {
+      const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
+      Object.assign(giveawayData, fresh);
+    }
+
     const giveaway = giveawayData[giveawayId];
 
     if (!giveaway) return interaction.reply({ content: "❌ This giveaway no longer exists.", flags: 64 });
     if (giveaway.ended) return interaction.reply({ content: "❌ This giveaway has already ended.", flags: 64 });
 
     if (giveaway.entries.includes(interaction.user.id)) {
-      return interaction.reply({ content: "✅ You have already entered this giveaway!", flags: 64 });
+      const leaveRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`giveaway_leave_${giveawayId}`)
+          .setLabel("Leave Giveaway")
+          .setStyle(ButtonStyle.Danger)
+      );
+      return interaction.reply({
+        content: "You are already in this giveaway.",
+        components: [leaveRow],
+        flags: 64
+      });
     }
 
     giveaway.entries.push(interaction.user.id);
@@ -1719,6 +1738,39 @@ client.on('interactionCreate', async interaction => {
     return interaction.reply({ content: `🎉 You have entered the **${giveaway.title}** giveaway! Good luck!`, flags: 64 });
   }
 
+// ===== GIVEAWAY LEAVE BUTTON =====
+  if (interaction.isButton() && interaction.customId.startsWith("giveaway_leave_")) {
+    const giveawayId = interaction.customId.replace("giveaway_leave_", "");
+
+    if (fs.existsSync(GIVEAWAY_DB)) {
+      const fresh = JSON.parse(fs.readFileSync(GIVEAWAY_DB));
+      Object.assign(giveawayData, fresh);
+    }
+
+    const giveaway = giveawayData[giveawayId];
+
+    if (!giveaway) return interaction.reply({ content: "❌ This giveaway no longer exists.", flags: 64 });
+    if (giveaway.ended) return interaction.reply({ content: "❌ This giveaway has already ended.", flags: 64 });
+
+    if (!giveaway.entries.includes(interaction.user.id)) {
+      return interaction.reply({ content: "❌ You are not in this giveaway.", flags: 64 });
+    }
+
+    giveaway.entries = giveaway.entries.filter(id => id !== interaction.user.id);
+    saveGiveaways();
+
+    const updatedComponents = buildGiveawayComponents(giveaway);
+    await interaction.message.edit({ components: [] }).catch(() => {});
+
+    const giveawayChannel = await interaction.guild.channels.fetch(giveaway.channelId).catch(() => null);
+    if (giveawayChannel) {
+      const giveawayMessage = await giveawayChannel.messages.fetch(giveaway.messageId).catch(() => null);
+      if (giveawayMessage) await giveawayMessage.edit({ components: [updatedComponents] }).catch(() => {});
+    }
+
+    return interaction.reply({ content: `👋 You have left the **${giveaway.title}** giveaway.`, flags: 64 });
+  }
+  
   // ===== APPLICATION APPROVE/DENY =====
   if (interaction.isButton() && interaction.customId.startsWith("appv2_")) {
     const isMod = interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id));
