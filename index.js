@@ -307,7 +307,7 @@ client.once("ready", async () => {
             },
             {
               type: 10,
-              content: "## <:d11:1490211876007841823> Server Support\n\n> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason."
+              content: "# <:d11:1490211876007841823> Server Support\n\n> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason."
             },
             {
               type: 14
@@ -317,7 +317,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "<:engineering:1492344844469801081> **General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
+      content: "## <:engineering:1492344844469801081> **General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
     }
   ],
   accessory: {
@@ -336,7 +336,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "<:rocket1:1492344299927375972> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
+      content: "## <:rocket1:1492344299927375972> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
     }
   ],
   accessory: {
@@ -355,7 +355,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "<:verified:1492344968621330642> **Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
+      content: "## <:verified:1492344968621330642> **Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
     }
   ],
   accessory: {
@@ -374,7 +374,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "**Please Read Before Opening a Ticket:**\n<:CF11:1488888964755492944> Do not __spam__ tickets\n<:CF11:1488888964755492944> Provide __detailed__ information\n<:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
+      content: "## <:warning1:1492349200644444270> **Please Read Before Opening a Ticket:**\n<:CF11:1488888964755492944> Do not __spam__ tickets\n<:CF11:1488888964755492944> Provide __detailed__ information\n<:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
     }
   ],
   accessory: {
