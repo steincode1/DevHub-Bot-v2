@@ -336,7 +336,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "## <:rocket1:1492344299927375972> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
+      content: "## <:rocket1:1492346412942495794> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
     }
   ],
   accessory: {
