@@ -139,8 +139,8 @@ function buildGiveawayEmbed(giveaway) {
       `• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n` +
       `• <:clockk:1492371699730087987> **Duration:** In ${durationMinutes / 60 / 24} day${durationMinutes / 60 / 24 !== 1 ? "s" : ""}`
       `\n―――――――――――――――――――――――――――――\n\n` +
-      `-# In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\n` +
-      `-# Winner(s): ${giveaway.winners && giveaway.winners.length > 0 ? giveaway.winners.map(id => `<@${id}>`).join(", ") : "TBD"}\n` +
+      `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\n` +
+      `Winner(s): ${giveaway.winners && giveaway.winners.length > 0 ? giveaway.winners.map(id => `<@${id}>`).join(", ") : "TBD"}\n` +
       `\n―――――――――――――――――――――――――――――`
     )
     .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
@@ -219,7 +219,7 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
             { type: 14 },
             {
               type: 10,
-              content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): ${giveaway.winners.map(id => `<@${id}>`).join(", ")}`
+              content: `-# In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): ${giveaway.winners.map(id => `<@${id}>`).join(", ")}`
             },
             {
   type: 1,
@@ -1796,7 +1796,7 @@ const giveawayMessage = await targetChannel.send({
               { type: 14 },
               {
                 type: 10,
-                content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD`
+                content: `-# In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD`
               },
               { type: 14 },
               {
