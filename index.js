@@ -317,7 +317,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "**General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
+      content: "<:engineering:1492344844469801081> **General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
     }
   ],
   accessory: {
@@ -336,7 +336,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "**Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
+      content: "<:rocket1:1492344299927375972> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
     }
   ],
   accessory: {
@@ -355,7 +355,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "**Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
+      content: "<:verified:1492344968621330642> **Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
     }
   ],
   accessory: {
