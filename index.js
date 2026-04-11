@@ -1774,9 +1774,10 @@ client.on('interactionCreate', async interaction => {
 
       await interaction.deferReply({ flags: 64 });
 
-      const giveawayMessage = await targetChannel.send({
-        content: "@everyone",
-        flags: 32768,
+      await targetChannel.send("@everyone");
+
+const giveawayMessage = await targetChannel.send({
+  flags: 32768,
         components: [
           {
             type: 17,
