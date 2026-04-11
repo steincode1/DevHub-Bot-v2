@@ -312,79 +312,79 @@ client.once("ready", async () => {
             {
               type: 14
             },
-            {
-              type: 10,
-              content: "**General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
-            },
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 1,
-                  label: "Available",
-                  custom_id: "badge_general",
-                  disabled: true
-                }
-              ]
-            },
-            {
-              type: 14
-            },
-            {
-              type: 10,
-              content: "**Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
-            },
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 1,
-                  label: "Available",
-                  custom_id: "badge_oversight",
-                  disabled: true
-                }
-              ]
-            },
-            {
-              type: 14
-            },
-            {
-              type: 10,
-              content: "**Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
-            },
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 1,
-                  label: "Available",
-                  custom_id: "badge_mgmt",
-                  disabled: true
-                }
-              ]
-            },
-            {
-              type: 14
-            },
-            {
-              type: 10,
-              content: "**Please Read Before Opening a Ticket:**\n<:CF11:1488888964755492944> Do not __spam__ tickets\n<:CF11:1488888964755492944> Provide __detailed__ information\n<:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
-            },
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 2,
-                  label: "Please Read",
-                  custom_id: "badge_read",
-                  disabled: true
-                }
-              ]
-            },
+           {
+  type: 9,
+  components: [
+    {
+      type: 10,
+      content: "**General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
+    }
+  ],
+  accessory: {
+    type: 2,
+    style: 1,
+    label: "Available",
+    custom_id: "badge_general",
+    disabled: true
+  }
+},
+{
+  type: 14
+},
+{
+  type: 9,
+  components: [
+    {
+      type: 10,
+      content: "**Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
+    }
+  ],
+  accessory: {
+    type: 2,
+    style: 2,
+    label: "Available",
+    custom_id: "badge_oversight",
+    disabled: true
+  }
+},
+{
+  type: 14
+},
+{
+  type: 9,
+  components: [
+    {
+      type: 10,
+      content: "**Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
+    }
+  ],
+  accessory: {
+    type: 2,
+    style: 1,
+    label: "Available",
+    custom_id: "badge_mgmt",
+    disabled: true
+  }
+},
+{
+  type: 14
+},
+{
+  type: 9,
+  components: [
+    {
+      type: 10,
+      content: "**Please Read Before Opening a Ticket:**\n<:CF11:1488888964755492944> Do not __spam__ tickets\n<:CF11:1488888964755492944> Provide __detailed__ information\n<:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
+    }
+  ],
+  accessory: {
+    type: 2,
+    style: 2,
+    label: "Please Read",
+    custom_id: "badge_read",
+    disabled: true
+  }
+},
             {
               type: 12,
               items: [{ media: { url: "https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp" } }]
