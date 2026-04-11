@@ -2147,13 +2147,24 @@ const giveawayMessage = await targetChannel.send({
     if (type === "general_ticket") { name = `🔴-general-${cleanName}`; title = "General Support"; ticketDescription = "Thank you for opening a ticket, a staff member will be with you shortly. If you could provide the reason why you opened it while waiting that would be great, thanks."; }
     if (type === "ia_ticket") { name = `🔴-ia-${cleanName}`; title = "Oversight Support"; ticketDescription = "Thank you for opening a ticket, an oversight member will be with you shortly. Please explain why you opened the ticket while waiting."; }
     if (type === "mgmt_ticket") { name = `🔴-mgmt-${cleanName}`; title = "Management Support"; ticketDescription = "Thank you for opening a ticket, a HR member will be with you shortly. Please explain why you opened the ticket while waiting."; }
+    const ticketOverwrites = [
+      { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+      { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+    ];
+
+    if (type === "general_ticket") {
+      ticketOverwrites.push({ id: TICKET_SUPPORT_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
+      ticketOverwrites.push({ id: "1492598982055297226", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
+    } else if (type === "ia_ticket") {
+      ticketOverwrites.push({ id: "1489099071263215646", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
+    } else if (type === "mgmt_ticket") {
+      ticketOverwrites.push({ id: "1492618251535126608", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
+      ticketOverwrites.push({ id: "1489370034764779600", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
+    }
+
     const channel = await guild.channels.create({
       name, type: ChannelType.GuildText, parent: TICKET_CATEGORY,
-      permissionOverwrites: [
-        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-        { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: TICKET_SUPPORT_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-      ]
+      permissionOverwrites: ticketOverwrites
     });
     const embed = new EmbedBuilder()
       .setTitle(title)
@@ -2164,6 +2175,11 @@ const giveawayMessage = await targetChannel.send({
       new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claim").setStyle(ButtonStyle.Success)
     );
+    let pingRole = "";
+    if (type === "general_ticket") pingRole = `<@&${TICKET_SUPPORT_ROLE}> <@&1492598982055297226>`;
+    else if (type === "ia_ticket") pingRole = `<@&1489099071263215646>`;
+    else if (type === "mgmt_ticket") pingRole = `<@&1492618251535126608> <@&1489370034764779600>`;
+    if (pingRole) await channel.send(pingRole);
     await channel.send({ embeds: [embed], components: [buttons] });
     return interaction.reply({ content: `✅ Ticket created: ${channel}`, flags: 64 });
   }
