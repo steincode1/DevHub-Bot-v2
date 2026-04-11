@@ -313,19 +313,24 @@ client.once("ready", async () => {
               type: 12,
               items: [{ media: { url: "https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp" } }]
             },
-            {
-              type: 14
-            },
-            {
-              type: 3,
-              custom_id: "ticket_select",
-              placeholder: "Our Assistance",
-              options: [
-                { label: "General Support", description: "Questions, help, or general issues", value: "general_ticket" },
-                { label: "Oversight Support", description: "Report staff or serious concerns", value: "ia_ticket" },
-                { label: "Management Support", description: "Contact high command", value: "mgmt_ticket" }
-              ]
-            }
+           {
+  type: 14
+},
+{
+  type: 1,
+  components: [
+    {
+      type: 3,
+      custom_id: "ticket_select",
+      placeholder: "Our Assistance",
+      options: [
+        { label: "General Support", description: "Questions, help, or general issues", value: "general_ticket" },
+        { label: "Oversight Support", description: "Report staff or serious concerns", value: "ia_ticket" },
+        { label: "Management Support", description: "Contact high command", value: "mgmt_ticket" }
+      ]
+    }
+  ]
+}
           ]
         }
       ]
