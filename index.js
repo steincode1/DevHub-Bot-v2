@@ -1772,9 +1772,6 @@ client.on('interactionCreate', async interaction => {
         ended: false
       };
 
-      const embed = buildGiveawayEmbed(giveaway);
-      const components = buildGiveawayComponents(giveaway);
-
       await interaction.deferReply({ flags: 64 });
 
       const giveawayMessage = await targetChannel.send({
