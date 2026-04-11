@@ -341,7 +341,7 @@ client.once("ready", async () => {
   ],
   accessory: {
     type: 2,
-    style: 2,
+    style: 1,
     label: "Available",
     custom_id: "badge_oversight",
     disabled: true
@@ -379,7 +379,7 @@ client.once("ready", async () => {
   ],
   accessory: {
     type: 2,
-    style: 1,
+    style: 2,
     label: "Please Read",
     custom_id: "badge_read",
     disabled: true
