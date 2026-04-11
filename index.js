@@ -379,7 +379,7 @@ client.once("ready", async () => {
   ],
   accessory: {
     type: 2,
-    style: 2,
+    style: 1,
     label: "Please Read",
     custom_id: "badge_read",
     disabled: true
