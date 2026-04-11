@@ -137,7 +137,7 @@ function buildGiveawayEmbed(giveaway) {
       `\n―――――――――――――――――――――――――――――\n\n` +
       `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n` +
       `• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n` +
-      `• <:clockk:1492371699730087987> **Duration:** ${durationText}\n` +
+      `• <:clockk:1492371699730087987> **Duration:** In ${durationMinutes / 60 / 24} day${durationMinutes / 60 / 24 !== 1 ? "s" : ""}`
       `\n―――――――――――――――――――――――――――――\n\n` +
       `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\n` +
       `Winner(s): ${giveaway.winners && giveaway.winners.length > 0 ? giveaway.winners.map(id => `<@${id}>`).join(", ") : "TBD"}\n` +
@@ -186,40 +186,73 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
     }
 
     const winnerId = entries[Math.floor(Math.random() * entries.length)];
-    const winner = await guild.members.fetch(winnerId).catch(() => null);
-    const winnerMention = winner ? `<@${winnerId}>` : `<@${winnerId}>`;
-
 
     if (rerollBy) {
       giveaway.winners = [...(giveaway.winners || []), winnerId];
     } else {
       giveaway.winners = [winnerId];
     }
-    
+
     giveaway.ended = true;
     saveGiveaways();
 
-    const endedEmbed = buildGiveawayEmbed(giveaway);
+    await message.edit({
+      embeds: [],
+      flags: 32768,
+      components: [
+        {
+          type: 17,
+          components: [
+            {
+              type: 10,
+              content: `## ${giveaway.title}`
+            },
+            {
+              type: 10,
+              content: giveaway.description
+            },
+            { type: 14 },
+            {
+              type: 10,
+              content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** Ended`
+            },
+            { type: 14 },
+            {
+              type: 10,
+              content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): ${giveaway.winners.map(id => `<@${id}>`).join(", ")}`
+            },
+            { type: 14 },
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: 1,
+                  label: "🎉 Join Giveaway",
+                  custom_id: `giveaway_join_${giveaway.id}`,
+                  disabled: true
+                },
+                {
+                  type: 2,
+                  style: 5,
+                  label: `Join ${giveaway.serverName}`,
+                  url: giveaway.serverLink
+                },
+                {
+                  type: 2,
+                  style: 2,
+                  label: `${entries.length} Entries`,
+                  custom_id: `giveaway_count_${giveaway.id}`,
+                  disabled: true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }).catch(() => {});
 
-    const endedRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`giveaway_join_${giveaway.id}`)
-        .setLabel("🎉 Join Giveaway")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(true),
-      new ButtonBuilder()
-        .setLabel(`Join ${giveaway.serverName}`)
-        .setStyle(ButtonStyle.Link)
-        .setURL(giveaway.serverLink),
-      new ButtonBuilder()
-        .setCustomId(`giveaway_count_${giveaway.id}`)
-        .setLabel(`${entries.length} Entries`)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(true)
-    );
-
-    await message.edit({ embeds: [endedEmbed], components: [endedRow] }).catch(() => {});
-
+    const winnerMention = `<@${winnerId}>`;
     const replyText = rerollBy
       ? `🎉 **Rerolled!** Congratulations ${winnerMention}! You won the **${giveaway.prize}**!`
       : `Congratulations ${winnerMention}! You won the **${giveaway.prize}**!`;
@@ -1746,8 +1779,56 @@ client.on('interactionCreate', async interaction => {
 
       const giveawayMessage = await targetChannel.send({
         content: "@everyone",
-        embeds: [embed],
-        components: [components]
+        flags: 32768,
+        components: [
+          {
+            type: 17,
+            components: [
+              {
+                type: 10,
+                content: `## ${giveaway.title}`
+              },
+              {
+                type: 10,
+                content: giveaway.description
+              },
+              { type: 14 },
+              {
+                type: 10,
+            content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** ${durationMinutes / 1440} day${durationMinutes / 1440 !== 1 ? "s" : ""}`              },
+              { type: 14 },
+              {
+                type: 10,
+                content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD`
+              },
+              { type: 14 },
+              {
+                type: 1,
+                components: [
+                  {
+                    type: 2,
+                    style: 1,
+                    label: "🎉 Join Giveaway",
+                    custom_id: `giveaway_join_${giveaway.id}`
+                  },
+                  {
+                    type: 2,
+                    style: 5,
+                    label: `Join ${giveaway.serverName}`,
+                    url: giveaway.serverLink
+                  },
+                  {
+                    type: 2,
+                    style: 2,
+                    label: `0 Entries`,
+                    custom_id: `giveaway_count_${giveaway.id}`,
+                    disabled: true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       });
 
       giveaway.messageId = giveawayMessage.id;
@@ -1815,8 +1896,26 @@ client.on('interactionCreate', async interaction => {
     giveaway.entries.push(interaction.user.id);
     saveGiveaways();
 
-    const updatedComponents = buildGiveawayComponents(giveaway);
-    await interaction.message.edit({ components: [updatedComponents] }).catch(() => {});
+    const entryCount = giveaway.entries.length;
+    await interaction.message.edit({
+      components: [{
+        type: 17,
+        components: [
+          { type: 10, content: `## ${giveaway.title}` },
+          { type: 10, content: giveaway.description },
+          { type: 14 },
+          { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** In progress` },
+          { type: 14 },
+          { type: 10, content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD` },
+          { type: 14 },
+          { type: 1, components: [
+            { type: 2, style: 1, label: "🎉 Join Giveaway", custom_id: `giveaway_join_${giveaway.id}` },
+            { type: 2, style: 5, label: `Join ${giveaway.serverName}`, url: giveaway.serverLink },
+            { type: 2, style: 2, label: `${entryCount} Entries`, custom_id: `giveaway_count_${giveaway.id}`, disabled: true }
+          ]}
+        ]
+      }]
+    }).catch(() => {});
 
     return interaction.reply({ content: `🎉 You have entered the **${giveaway.title}** giveaway! Good luck!`, flags: 64 });
   }
@@ -1844,14 +1943,26 @@ client.on('interactionCreate', async interaction => {
     giveaway.entries = giveaway.entries.filter(id => id !== interaction.user.id);
     saveGiveaways();
 
-    const updatedComponents = buildGiveawayComponents(giveaway);
-    await interaction.message.edit({ components: [] }).catch(() => {});
-
-    const giveawayChannel = await interaction.guild.channels.fetch(giveaway.channelId).catch(() => null);
-    if (giveawayChannel) {
-      const giveawayMessage = await giveawayChannel.messages.fetch(giveaway.messageId).catch(() => null);
-      if (giveawayMessage) await giveawayMessage.edit({ components: [updatedComponents] }).catch(() => {});
-    }
+    const entryCount = giveaway.entries.length;
+    await interaction.message.edit({
+      components: [{
+        type: 17,
+        components: [
+          { type: 10, content: `## ${giveaway.title}` },
+          { type: 10, content: giveaway.description },
+          { type: 14 },
+          { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** In progress` },
+          { type: 14 },
+          { type: 10, content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD` },
+          { type: 14 },
+          { type: 1, components: [
+            { type: 2, style: 1, label: "🎉 Join Giveaway", custom_id: `giveaway_join_${giveaway.id}` },
+            { type: 2, style: 5, label: `Join ${giveaway.serverName}`, url: giveaway.serverLink },
+            { type: 2, style: 2, label: `${entryCount} Entries`, custom_id: `giveaway_count_${giveaway.id}`, disabled: true }
+          ]}
+        ]
+      }]
+    }).catch(() => {});
 
     return interaction.reply({ content: `👋 You have left the **${giveaway.title}** giveaway.`, flags: 64 });
   }
