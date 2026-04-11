@@ -134,9 +134,9 @@ function buildGiveawayEmbed(giveaway) {
     .setTitle(giveaway.title)
     .setDescription(
       giveaway.description + `\n\n` +
-      `• <:linkk:1491888052610793734> **Server:** ${giveaway.serverLink}\n` +
-      `• <:roblox:1491888168679772371> **Prize:** ${giveaway.prize}\n` +
-      `• <:clockk:1491887992703418448> **Duration:** ${durationText}`
+      `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n` +
+      `• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n` +
+      `• <:clockk:1492371699730087987> **Duration:** ${durationText}`
     )
     .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
     .setColor("#2A5CFF")
@@ -317,7 +317,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "## <:engineering:1492344844469801081> **General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
+      content: "## <:generalsupport:1492370538159407165> **General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
     }
   ],
   accessory: {
@@ -336,7 +336,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "## <:rocket1:1492346412942495794> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
+      content: "## <:Oversight_support:1492370948744020079> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
     }
   ],
   accessory: {
@@ -355,7 +355,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "## <:verified:1492344968621330642> **Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
+      content: "## <:Management_support:1492371200436076625> **Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
     }
   ],
   accessory: {
@@ -374,7 +374,7 @@ client.once("ready", async () => {
   components: [
     {
       type: 10,
-      content: "## <:warning1:1492349200644444270> **Please Read Before Opening a Ticket:**\n<:CF11:1488888964755492944> Do not __spam__ tickets\n<:CF11:1488888964755492944> Provide __detailed__ information\n<:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
+      content: "## <:ticket_rules:1492372161518899372> **Please Read Before Opening a Ticket:**\n<:CF11:1488888964755492944> Do not __spam__ tickets\n<:CF11:1488888964755492944> Provide __detailed__ information\n<:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
     }
   ],
   accessory: {
