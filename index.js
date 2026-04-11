@@ -1306,7 +1306,13 @@ const commands = [
         { name: '12 Days', value: '17280' },
         { name: '14 Days', value: '20160' }
       ))
-    .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true)),
+    .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true))
+.addStringOption(o => o.setName('ping').setDescription('Who to ping').setRequired(false)
+  .addChoices(
+    { name: 'No Ping', value: 'none' },
+    { name: '@here', value: 'here' },
+    { name: '@everyone', value: 'everyone' }
+  )),
 
   // ===== REROLL =====
   new SlashCommandBuilder().setName('reroll').setDescription('Reroll a giveaway winner')
@@ -1745,6 +1751,8 @@ client.on('interactionCreate', async interaction => {
       const serverLink = interaction.options.getString("server_link");
       const durationMinutes = parseInt(interaction.options.getString("duration"));
       const targetChannel = interaction.options.getChannel("channel");
+const pingChoice = interaction.options.getString("ping") ?? "none";
+const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "here" ? "@here" : null;
 
       if (targetChannel.type !== ChannelType.GuildText)
         return interaction.reply({ content: "❌ Please select a text channel.", flags: 64 });
@@ -1773,7 +1781,7 @@ client.on('interactionCreate', async interaction => {
 
       await interaction.deferReply({ flags: 64 });
 
-      await targetChannel.send("@everyone");
+      if (pingContent) await targetChannel.send(pingContent);
 
 const giveawayMessage = await targetChannel.send({
   flags: 32768,
@@ -1901,8 +1909,7 @@ const giveawayMessage = await targetChannel.send({
           { type: 10, content: `## ${giveaway.title}` },
           { type: 10, content: giveaway.description },
           { type: 14 },
-          { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** In progress` },
-          { type: 14 },
+          { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** ${(() => { const ms = giveaway.endsAt - Date.now(); if (ms <= 0) return "Ended"; const d = Math.floor(ms / 86400000); const h = Math.floor((ms % 86400000) / 3600000); const m = Math.floor((ms % 3600000) / 60000); return (d > 0 ? d + "d " : "") + (h > 0 ? h + "h " : "") + m + "m"; })()}` },          { type: 14 },
           { type: 10, content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD` },
           { type: 14 },
           { type: 1, components: [
