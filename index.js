@@ -1307,7 +1307,7 @@ const commands = [
         { name: '14 Days', value: '20160' }
       ))
     .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true))
-.addStringOption(o => o.setName('ping').setDescription('Who to ping').setRequired(false)
+.addStringOption(o => o.setName('ping').setDescription('Who to ping').setRequired(true)
   .addChoices(
     { name: 'No Ping', value: 'none' },
     { name: '@here', value: 'here' },
