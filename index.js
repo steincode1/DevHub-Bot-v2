@@ -322,7 +322,7 @@ client.once("ready", async () => {
   ],
   accessory: {
     type: 2,
-    style: 1,
+    style: 3,
     label: "Available",
     custom_id: "badge_general",
     disabled: true
@@ -341,7 +341,7 @@ client.once("ready", async () => {
   ],
   accessory: {
     type: 2,
-    style: 1,
+    style: 3,
     label: "Available",
     custom_id: "badge_oversight",
     disabled: true
@@ -360,7 +360,7 @@ client.once("ready", async () => {
   ],
   accessory: {
     type: 2,
-    style: 1,
+    style: 3,
     label: "Available",
     custom_id: "badge_mgmt",
     disabled: true
