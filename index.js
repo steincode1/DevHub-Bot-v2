@@ -134,9 +134,14 @@ function buildGiveawayEmbed(giveaway) {
     .setTitle(giveaway.title)
     .setDescription(
       giveaway.description + `\n\n` +
+      `\n―――――――――――――――――――――――――――――\n\n` +
       `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n` +
       `• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n` +
-      `• <:clockk:1492371699730087987> **Duration:** ${durationText}`
+      `• <:clockk:1492371699730087987> **Duration:** ${durationText}\n` +
+      `\n―――――――――――――――――――――――――――――\n\n` +
+      `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\n` +
+      `Winner(s): ${giveaway.winners && giveaway.winners.length > 0 ? giveaway.winners.map(id => `<@${id}>`).join(", ") : "TBD"}\n` +
+      `\n―――――――――――――――――――――――――――――`
     )
     .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
     .setColor("#2A5CFF")
@@ -184,6 +189,13 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
     const winner = await guild.members.fetch(winnerId).catch(() => null);
     const winnerMention = winner ? `<@${winnerId}>` : `<@${winnerId}>`;
 
+
+    if (rerollBy) {
+      giveaway.winners = [...(giveaway.winners || []), winnerId];
+    } else {
+      giveaway.winners = [winnerId];
+    }
+    
     giveaway.ended = true;
     saveGiveaways();
 
