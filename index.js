@@ -322,7 +322,7 @@ const client = new Client({
 let inviteCache = new Map();
 const claimedTickets = new Map();
 
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
   client.user.setPresence({
@@ -637,7 +637,6 @@ client.on("messageCreate", async message => {
       const mentionMatch = arg.match(/^<@!?(\d+)>$/);
       if (mentionMatch) return client.users.fetch(mentionMatch[1]).catch(() => null);
       if (/^\d+$/.test(arg)) return client.users.fetch(arg).catch(() => null);
-      await message.guild.members.fetch();
       const found = message.guild.members.cache.find(m =>
         m.user.username.toLowerCase() === arg.toLowerCase() ||
         m.displayName.toLowerCase() === arg.toLowerCase()
@@ -650,7 +649,6 @@ client.on("messageCreate", async message => {
       const mentionMatch = arg.match(/^<@!?(\d+)>$/);
       const id = mentionMatch ? mentionMatch[1] : /^\d+$/.test(arg) ? arg : null;
       if (id) return message.guild.members.fetch(id).catch(() => null);
-      await message.guild.members.fetch();
       return message.guild.members.cache.find(m =>
         m.user.username.toLowerCase() === arg.toLowerCase() ||
         m.displayName.toLowerCase() === arg.toLowerCase()
@@ -1744,7 +1742,7 @@ client.on('interactionCreate', async interaction => {
     }
 
     // ===== GIVEAWAY =====
-    if (interaction.commandName === "giveaway") {
+    if (interaction.commandName === "paid-ad") {
       if (!interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id)))
         return interaction.reply({ content: "❌ No permission.", flags: 64 });
 
@@ -2260,6 +2258,10 @@ client.on("webhookUpdate", async channel => {
   const webhooks = await channel.fetchWebhooks().catch(() => null);
   if (webhooks) webhooks.forEach(wh => wh.delete("Anti-nuke: unauthorized webhook").catch(() => {}));
   trackNukeAction(guild, executorId, "Webhook Creation");
+});
+
+client.on("error", (err) => {
+  console.error("Discord client error (handled):", err.message);
 });
 
 client.login(TOKEN);
