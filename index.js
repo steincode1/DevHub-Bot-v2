@@ -897,7 +897,7 @@ client.on("messageCreate", async message => {
       const transcript = fetched.reverse().map(m => `[${new Date(m.createdTimestamp).toLocaleString()}] ${m.author.tag}: ${m.content}`).join("\n");
       let ticketType = "Ticket";
       if (channelName.includes("general")) ticketType = "General Support";
-      else if (channelName.includes("ia")) ticketType = "Internal Affairs";
+      else if (channelName.includes("os")) ticketType = "Oversight Support";
       else if (channelName.includes("mgmt")) ticketType = "Management Support";
       const opener = fetched.last()?.author ?? message.author;
       const transcriptEmbed = new EmbedBuilder()
@@ -1622,7 +1622,7 @@ client.on('interactionCreate', async interaction => {
       const transcript = fetched.reverse().map(m => `[${new Date(m.createdTimestamp).toLocaleString()}] ${m.author.tag}: ${m.content}`).join("\n");
       let ticketType = "Ticket";
       if (channelName.includes("general")) ticketType = "General Support";
-      else if (channelName.includes("ia")) ticketType = "Internal Affairs";
+      else if (channelName.includes("os")) ticketType = "Oversight Support";
       else if (channelName.includes("mgmt")) ticketType = "Management Support";
       const opener = fetched.last()?.author ?? interaction.user;
       const transcriptEmbed = new EmbedBuilder()
@@ -2080,7 +2080,7 @@ const giveawayMessage = await targetChannel.send({
     const transcript = fetched.reverse().map(m => `[${new Date(m.createdTimestamp).toLocaleString()}] ${m.author.tag}: ${m.content}`).join("\n");
     let ticketType = "Ticket";
     if (channelName.includes("general")) ticketType = "General Support";
-    else if (channelName.includes("ia")) ticketType = "Internal Affairs";
+    else if (channelName.includes("os")) ticketType = "Oversight Support";
     else if (channelName.includes("mgmt")) ticketType = "Management Support";
     const opener = fetched.last()?.author ?? interaction.user;
     const transcriptEmbed = new EmbedBuilder()
@@ -2145,8 +2145,7 @@ const giveawayMessage = await targetChannel.send({
     const cleanName = user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
     let name, title, ticketDescription;
     if (type === "general_ticket") { name = `🔴-general-${cleanName}`; title = "General Support"; ticketDescription = "Thank you for opening a ticket, a staff member will be with you shortly. If you could provide the reason why you opened it while waiting that would be great, thanks."; }
-    if (type === "ia_ticket") { name = `🔴-ia-${cleanName}`; title = "Oversight Support"; ticketDescription = "Thank you for opening a ticket, an oversight member will be with you shortly. Please explain why you opened the ticket while waiting."; }
-    if (type === "mgmt_ticket") { name = `🔴-mgmt-${cleanName}`; title = "Management Support"; ticketDescription = "Thank you for opening a ticket, a HR member will be with you shortly. Please explain why you opened the ticket while waiting."; }
+    if (type === "ia_ticket") { name = `🔴-os-${cleanName}`; title = "Oversight Support"; ticketDescription = "Thank you for opening a ticket, an oversight member will be with you shortly. Please explain why you opened the ticket while waiting."; }    if (type === "mgmt_ticket") { name = `🔴-mgmt-${cleanName}`; title = "Management Support"; ticketDescription = "Thank you for opening a ticket, a HR member will be with you shortly. Please explain why you opened the ticket while waiting."; }
     const ticketOverwrites = [
       { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
       { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
