@@ -266,9 +266,13 @@ function rescheduleGiveaways() {
   const now = Date.now();
   for (const id in giveawayData) {
     const g = giveawayData[id];
-    if (!g.ended && g.endsAt > now) {
+    if (!g.ended) {
       const remaining = g.endsAt - now;
-      setTimeout(() => concludeGiveaway(id), remaining);
+      if (remaining <= 0) {
+        concludeGiveaway(id);
+      } else {
+        setTimeout(() => concludeGiveaway(id), remaining);
+      }
     }
   }
 }
@@ -1292,7 +1296,7 @@ const commands = [
     .addIntegerOption(o => o.setName('robux').setDescription('Amount of Robux you want to receive').setRequired(true)),
 
   // ===== GIVEAWAY =====
-  new SlashCommandBuilder().setName('giveaway').setDescription('Start a giveaway')
+  new SlashCommandBuilder().setName('paid-ad').setDescription('Start a SPGW')
     .addStringOption(o => o.setName('title').setDescription('Title of the giveaway').setRequired(true))
     .addStringOption(o => o.setName('description').setDescription('Description shown in the embed').setRequired(true))
     .addStringOption(o => o.setName('prize').setDescription('What the winner receives e.g. 20,000 Robux').setRequired(true))
