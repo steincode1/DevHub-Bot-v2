@@ -278,6 +278,62 @@ function rescheduleGiveaways() {
   }
 }
 
+async function updateGiveawayTimer(giveawayId) {
+  const giveaway = giveawayData[giveawayId];
+  if (!giveaway || giveaway.ended) return;
+
+  try {
+    const guild = client.guilds.cache.get(GUILD_ID);
+    if (!guild) return;
+    const channel = await guild.channels.fetch(giveaway.channelId).catch(() => null);
+    if (!channel) return;
+    const message = await channel.messages.fetch(giveaway.messageId).catch(() => null);
+    if (!message) return;
+
+    const ms = giveaway.endsAt - Date.now();
+    if (ms <= 0) return;
+    const d = Math.floor(ms / 86400000);
+    const h = Math.floor((ms % 86400000) / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    const timeStr = (d > 0 ? d + "d " : "") + (h > 0 ? h + "h " : "") + (m > 0 ? m + "m " : "") + s + "s";
+
+    const entryCount = giveaway.entries ? giveaway.entries.length : 0;
+
+    await message.edit({
+      components: [{
+        type: 17,
+        components: [
+          { type: 10, content: `## ${giveaway.title}` },
+          { type: 10, content: giveaway.description },
+          { type: 14 },
+          { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${timeStr}` },
+          { type: 14 },
+          { type: 10, content: `-# In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD` },
+          { type: 14 },
+          { type: 1, components: [
+            { type: 2, style: 1, label: "🎉 Join Giveaway", custom_id: `giveaway_join_${giveaway.id}` },
+            { type: 2, style: 5, label: `Join ${giveaway.serverName}`, url: giveaway.serverLink },
+            { type: 2, style: 2, label: `${entryCount} Entries`, custom_id: `giveaway_count_${giveaway.id}`, disabled: true }
+          ]}
+        ]
+      }]
+    }).catch(() => {});
+  } catch (err) {
+    console.error("Timer update error:", err.message);
+  }
+}
+
+function startGiveawayTimers() {
+  setInterval(() => {
+    for (const id in giveawayData) {
+      if (!giveawayData[id].ended) {
+        updateGiveawayTimer(id);
+      }
+    }
+  }, 30000); // updates every 30 seconds
+}
+
 // ===== APPLICATION SESSION TRACKING =====
 const applicationSessions = new Map();
 const APPLICATION_COOLDOWN_MS = 48 * 60 * 60 * 1000;
@@ -482,6 +538,7 @@ client.once("clientReady", async () => {
   }
 
   rescheduleGiveaways();
+  startGiveawayTimers();
 });
 
 // ===== ANTI RAID + AUTO ROLES =====
@@ -1027,8 +1084,13 @@ client.on("messageCreate", async message => {
   }
 
   const urlRegex = /https?:\/\/[^\s]+/gi;
-  const links = message.content.match(urlRegex);
-  if (links) {
+const links = message.content.match(urlRegex);
+if (links) {
+  const ticketCategories = ["1487555806202171533", "1491270734985822380"];
+  const isTicketChannel = ticketCategories.includes(message.channel.parentId);
+  if (isTicketChannel) {
+    // Allow all links in ticket categories
+  } else {
     const isAllowed = links.every(link => WHITELISTED_LINKS.some(domain => link.includes(domain)));
     if (!isAllowed || isNewMember) {
       await message.delete().catch(() => {});
@@ -1037,6 +1099,7 @@ client.on("messageCreate", async message => {
       return;
     }
   }
+}
 
   const mentionCount = message.mentions.users.size + message.mentions.roles.size;
   if (mentionCount > MASS_MENTION_LIMIT) {
