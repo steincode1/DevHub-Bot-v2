@@ -733,10 +733,10 @@ client.on("messageCreate", async message => {
       await target.roles.add(role).catch(() => {});
       addLog(target.id, "Promotion", message.author.tag, reason);
       const embed = new EmbedBuilder()
-        .setTitle("Staff Promotion")
+        .setTitle("<:DevHub:1490211876007841823> | **Staff Promotion**")
         .setDescription(`Congratulations! ${target} has been promoted by ${message.author}.`)
         .addFields({ name: "Staff Member", value: `${target}`, inline: false }, { name: "New Rank", value: `${role}`, inline: false }, { name: "Reason", value: reason, inline: false })
-        .setColor("#f1c40f").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Promotion issued by ${message.author.tag}` }).setTimestamp();
+        .setColor("#2582F5").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Promotion issued by ${message.author.tag}` }).setTimestamp();
       const logChannel = message.guild.channels.cache.get("1489097136929902624");
       if (logChannel) logChannel.send({ content: `${target}`, embeds: [embed] });
       return staffReply("✅ Promotion sent.");
