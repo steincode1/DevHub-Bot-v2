@@ -331,7 +331,7 @@ function startGiveawayTimers() {
         updateGiveawayTimer(id);
       }
     }
-  }, 30000); // updates every 30 seconds
+  }, 5000); // updates every 30 seconds
 }
 
 // ===== APPLICATION SESSION TRACKING =====
