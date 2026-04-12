@@ -1310,6 +1310,7 @@ const commands = [
         { name: '14 Days', value: '20160' }
       ))
     .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true))
+.addStringOption(o => o.setName('custom_duration').setDescription('Custom duration in minutes e.g. 30 (overrides the duration dropdown)').setRequired(false))
 .addStringOption(o => o.setName('ping').setDescription('Who to ping').setRequired(true)
   .addChoices(
     { name: 'No Ping', value: 'none' },
@@ -1755,7 +1756,10 @@ await targetUser.send(
       const prize = interaction.options.getString("prize");
       const serverName = interaction.options.getString("server_name");
       const serverLink = interaction.options.getString("server_link");
-      const durationMinutes = parseInt(interaction.options.getString("duration"));
+      const customDuration = interaction.options.getString("custom_duration");
+const durationMinutes = customDuration ? parseInt(customDuration) : parseInt(interaction.options.getString("duration"));
+if (isNaN(durationMinutes) || durationMinutes < 1)
+  return interaction.reply({ content: "❌ Please provide a valid number of minutes in the custom duration field.", flags: 64 });
       const targetChannel = interaction.options.getChannel("channel");
 const pingChoice = interaction.options.getString("ping") ?? "none";
 const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "here" ? "@here" : null;
