@@ -188,11 +188,7 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
 
     const winnerId = entries[Math.floor(Math.random() * entries.length)];
 
-    if (rerollBy) {
-      giveaway.winners = [...(giveaway.winners || []), winnerId];
-    } else {
-      giveaway.winners = [winnerId];
-    }
+    giveaway.winners = [winnerId];
 
     giveaway.ended = true;
     saveGiveaways();
@@ -1075,12 +1071,18 @@ client.on("messageCreate", async message => {
 
   const inviteRegex = /(discord\.gg|discord\.com\/invite)\/[a-zA-Z0-9]+/gi;
   if (inviteRegex.test(message.content)) {
-    await message.delete().catch(() => {});
-    await message.member.timeout(5 * 60 * 1000).catch(() => {});
-    await message.author.send("Do not advertise other Discord servers.").catch(() => {});
-    addLog(message.member.id, "Invite Advertisement", "Automod", "5 Minute Timeout");
-    sendAutomodLog(message.guild, message.author, message.channel, "Discord Invite Advertisement", "5 Minute Timeout + Message Deleted");
-    return;
+    const ticketCategories = ["1487555806202171533", "1491270734985822380"];
+    const isTicketChannel = ticketCategories.includes(message.channel.parentId);
+    if (isTicketChannel) {
+      // Allow discord invites in ticket categories
+    } else {
+      await message.delete().catch(() => {});
+      await message.member.timeout(5 * 60 * 1000).catch(() => {});
+      await message.author.send("Do not advertise other Discord servers.").catch(() => {});
+      addLog(message.member.id, "Invite Advertisement", "Automod", "5 Minute Timeout");
+      sendAutomodLog(message.guild, message.author, message.channel, "Discord Invite Advertisement", "5 Minute Timeout + Message Deleted");
+      return;
+    }
   }
 
   const urlRegex = /https?:\/\/[^\s]+/gi;
@@ -2028,8 +2030,7 @@ const giveawayMessage = await targetChannel.send({
           { type: 10, content: `## ${giveaway.title}` },
           { type: 10, content: giveaway.description },
           { type: 14 },
-          { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** In progress` },
-          { type: 14 },
+{ type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${(() => { const ms = giveaway.endsAt - Date.now(); if (ms <= 0) return "Ended"; const d = Math.floor(ms / 86400000); const h = Math.floor((ms % 86400000) / 3600000); const m = Math.floor((ms % 3600000) / 60000); const s = Math.floor((ms % 60000) / 1000); return (d > 0 ? d + "d " : "") + (h > 0 ? h + "h " : "") + (m > 0 ? m + "m " : "") + s + "s"; })()}` },          { type: 14 },
           { type: 10, content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD` },
           { type: 14 },
           { type: 1, components: [
