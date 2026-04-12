@@ -756,7 +756,7 @@ client.on("messageCreate", async message => {
       await target.roles.add(demotedRole).catch(() => {});
       addLog(target.id, "Demotion", message.author.tag, reason);
       const embed = new EmbedBuilder()
-        .setTitle("Demotion").setDescription(`${target} has been demoted to ${demotedRole}.`)
+        .setTitle("<:DevHub:1490211876007841823> | **Demotion**").setDescription(`${target} has been demoted to ${demotedRole}.`)
         .addFields({ name: "Person", value: `${target}`, inline: false }, { name: "New Role", value: `${demotedRole}`, inline: false }, { name: "Reason", value: reason, inline: false })
         .setColor("#2b2d31").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Demoted by ${message.author.tag}` }).setTimestamp();
       const logChannel = message.guild.channels.cache.get("1489097083029033060");
