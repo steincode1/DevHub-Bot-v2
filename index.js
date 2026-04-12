@@ -945,7 +945,7 @@ client.on("messageCreate", async message => {
     if (cmd === "status") {
       const entry = statusData[message.author.id];
       if (!entry) return staffReply("You don't have an order status set yet. Please open a ticket if you have an active order.");
-      const statusMap = { pending: "🟡 Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
+      const statusMap = { paymentpending: "💳 Payment Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
       const embed = new EmbedBuilder()
         .setTitle("Order Status")
         .addFields({ name: "Status", value: statusMap[entry.status] || "Unknown" }, { name: "Last Updated", value: entry.updatedAt })
@@ -959,10 +959,10 @@ client.on("messageCreate", async message => {
       if (!isStatusStaff) return staffReply("❌ No permission.");
       const user = await resolveUser(args[0]);
       const newStatus = args[1]?.toLowerCase();
-      const validStatuses = ["pending", "inprogress", "completed"];
+      const validStatuses = ["paymentpending", "inprogress", "completed"];
       if (!user) return staffReply("❌ User not found.");
       if (!validStatuses.includes(newStatus)) return staffReply("❌ Status must be: `pending`, `inprogress`, or `completed`.");
-      const statusMap = { pending: "🟡 Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
+      const statusMap = { paymentpending: "💳 Payment Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
       statusData[user.id] = { status: newStatus, updatedAt: new Date().toLocaleString() };
       saveStatuses();
       await user.send(`📦 Your order status has been updated!\n\n**Status:** ${statusMap[newStatus]}\n\nUse **/status** in the server to check it at any time.`).catch(() => {});
@@ -1286,7 +1286,7 @@ const commands = [
     .addUserOption(o => o.setName('user').setDescription('User whose status to update').setRequired(true))
     .addStringOption(o => o.setName('status').setDescription('New status').setRequired(true)
       .addChoices(
-        { name: '🟡 Pending', value: 'pending' },
+        { name: '💳 Payment Pending', value: 'paymentpending' },
         { name: '🔵 In Progress', value: 'inprogress' },
         { name: '✅ Completed', value: 'completed' }
       )),
@@ -1708,7 +1708,7 @@ client.on('interactionCreate', async interaction => {
     if (interaction.commandName === "status") {
       const entry = statusData[interaction.user.id];
       if (!entry) return interaction.reply({ content: "You don't have an order status set yet. Please open a ticket if you have an active order.", flags: 64 });
-      const statusMap = { pending: "🟡 Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
+      const statusMap = { paymentpending: "💳 Payment Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
       const embed = new EmbedBuilder()
         .setTitle("Order Status")
         .addFields({ name: "Status", value: statusMap[entry.status] || "Unknown" }, { name: "Last Updated", value: entry.updatedAt })
@@ -1722,11 +1722,14 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({ content: "❌ You do not have permission to update statuses.", flags: 64 });
       const targetUser = interaction.options.getUser("user");
       const newStatus = interaction.options.getString("status");
-      const statusMap = { pending: "🟡 Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
+      const statusMap = { paymentpending: "💳 Payment Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
       statusData[targetUser.id] = { status: newStatus, updatedAt: new Date().toLocaleString() };
       saveStatuses();
-      await targetUser.send(`📦 Your order status has been updated!\n\n**Status:** ${statusMap[newStatus]}\n\nUse **/status** in the server to check it at any time.`).catch(() => {});
-      return interaction.reply({ content: `✅ Updated ${targetUser.tag}'s status to **${statusMap[newStatus]}**.`, flags: 64 });
+await targetUser.send(
+  newStatus === "completed"
+    ? `🎉 Your order is completed! Speak to your designer for more info.`
+    : `📦 Your order status has been updated!\n\n**Status:** ${statusMap[newStatus]}\n\nUse **/status** in the server to check it at any time.`
+).catch(() => {});      return interaction.reply({ content: `✅ Updated ${targetUser.tag}'s status to **${statusMap[newStatus]}**.`, flags: 64 });
     }
 
     // TAX CALC
