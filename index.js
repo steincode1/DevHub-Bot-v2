@@ -1310,13 +1310,13 @@ const commands = [
         { name: '14 Days', value: '20160' }
       ))
     .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true))
-.addStringOption(o => o.setName('custom_duration').setDescription('Custom duration in minutes e.g. 30 (overrides the duration dropdown)').setRequired(false))
 .addStringOption(o => o.setName('ping').setDescription('Who to ping').setRequired(true)
   .addChoices(
     { name: 'No Ping', value: 'none' },
     { name: '@here', value: 'here' },
     { name: '@everyone', value: 'everyone' }
-  )),
+  ))
+.addStringOption(o => o.setName('custom_duration').setDescription('Custom duration in minutes e.g. 30 (overrides the duration dropdown)').setRequired(false)),
 
   // ===== REROLL =====
   new SlashCommandBuilder().setName('reroll').setDescription('Reroll a giveaway winner')
