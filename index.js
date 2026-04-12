@@ -220,7 +220,7 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
             { type: 14 },
             {
               type: 10,
-              content: `-# In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): ${giveaway.winners.map(id => `<@${id}>`).join(", ")}`
+              content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): ${giveaway.winners.map(id => `<@${id}>`).join(", ")}`
             },
             {
   type: 1,
