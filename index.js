@@ -682,9 +682,13 @@ client.on("messageCreate", async message => {
     const isAllowedRename = isTicketStaff || isOrderStaff;
 
     async function staffReply(content) {
-      const m = await message.reply(content);
-      setTimeout(() => m.delete().catch(() => {}), 5000);
-    }
+  const m = await message.reply(content);
+  setTimeout(() => m.delete().catch(() => {}), 5000);
+}
+
+async function persistReply(content) {
+  return message.reply(content);
+}
 
     async function resolveUser(arg) {
       if (!arg) return null;
@@ -775,7 +779,7 @@ client.on("messageCreate", async message => {
       if (!user) return staffReply("❌ User not found.");
       const logs = playerLogs[user.id];
       if (!logs || logs.length === 0) return staffReply("No logs found.");
-      return staffReply(logs.map(l => `• [${l.date}] ${l.type} | ${l.moderator} | ${l.reason}`).join("\n"));
+      return persistReply(logs.map(l => `• [${l.date}] ${l.type} | ${l.moderator} | ${l.reason}`).join("\n"));
     }
 
     if (cmd === "clearlogs") {
@@ -848,7 +852,7 @@ client.on("messageCreate", async message => {
     if (cmd === "strikes") {
       const user = await resolveUser(args[0]);
       if (!user) return staffReply("❌ User not found.");
-      return staffReply(`${user.tag} has ${strikeData[user.id] || 0} strike(s).`);
+      return persistReply(`${user.tag} has ${strikeData[user.id] || 0} strike(s).`);
     }
 
     if (cmd === "mute") {
@@ -912,37 +916,37 @@ client.on("messageCreate", async message => {
       const sorted = Object.entries(levelData).sort((a, b) => b[1].level - a[1].level).slice(0, 10);
       if (sorted.length === 0) return staffReply("No data yet.");
       const lb = sorted.map((u, i) => { const m = message.guild.members.cache.get(u[0]); return `${i + 1}. ${m ? m.user.tag : "Unknown"} — Level ${u[1].level}`; }).join("\n");
-      return staffReply(`🏆 **XP Leaderboard**\n\n${lb}`);
+      return persistReply(`🏆 **XP Leaderboard**\n\n${lb}`);
     }
 
     if (cmd === "recruitleaderboard") {
       const sorted = Object.entries(inviteData).sort((a, b) => b[1].invites - a[1].invites).slice(0, 10);
       if (sorted.length === 0) return staffReply("No recruitment data yet.");
       const lb = sorted.map((u, i) => { const m = message.guild.members.cache.get(u[0]); return `${i + 1}. ${m ? m.user.tag : "Unknown"} — ${u[1].invites} invites`; }).join("\n");
-      return staffReply(`📈 **Recruitment Leaderboard**\n\n${lb}`);
+      return persistReply(`📈 **Recruitment Leaderboard**\n\n${lb}`);
     }
 
     if (cmd === "myinvites") {
       const data = inviteData[message.author.id];
       if (!data) return staffReply("You have 0 invites.");
-      return staffReply(`📊 You have invited ${data.invites} member(s).`);
+      return persistReply(`📊 You have invited ${data.invites} member(s).`);
     }
 
     if (cmd === "claim") {
-      if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
-      if (claimedTickets.has(message.channel.id)) {
-        const claimerTag = claimedTickets.get(message.channel.id);
-        return staffReply(`❌ This ticket has already been claimed by **${claimerTag}**.`);
-      }
-      claimedTickets.set(message.channel.id, message.author.tag);
-      if (message.channel.name.startsWith("🔴-")) {
-        await message.channel.setName(`🟢-${message.channel.name.replace("🔴-", "")}`).catch(() => {});
-      }
-      const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${message.author}.`).setColor("#2A5CFF").setTimestamp();
-      const m = await message.channel.send({ embeds: [embed] });
-      setTimeout(() => m.delete().catch(() => {}), 5000);
-      return;
-    }
+  if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
+  if (claimedTickets.has(message.channel.id)) {
+    const claimerTag = claimedTickets.get(message.channel.id);
+    return staffReply(`❌ This ticket has already been claimed by **${claimerTag}**.`);
+  }
+  claimedTickets.set(message.channel.id, message.author.tag);
+  if (message.channel.name.startsWith("🔴-")) {
+    await message.channel.setName(`🟢-${message.channel.name.replace("🔴-", "")}`).catch(() => {});
+  }
+  const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${message.author}.`).setColor("#2A5CFF").setTimestamp();
+  await message.channel.send({ embeds: [embed] });
+  await message.delete().catch(() => {});
+  return;
+}
 
     if (cmd === "close") {
       if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
@@ -969,32 +973,35 @@ client.on("messageCreate", async message => {
     }
 
     if (cmd === "closereq") {
-      if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
-      const embed = new EmbedBuilder()
-        .setTitle("Close Request").setDescription("The ticket support would like to know whether or not you want to close the ticket.")
-        .setColor("#2A5CFF").setTimestamp();
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`closereq_yes_${message.author.id}`).setLabel("Yes").setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId(`closereq_no_${message.author.id}`).setLabel("No").setStyle(ButtonStyle.Danger)
-      );
-      return message.channel.send({ embeds: [embed], components: [row] });
-    }
+  if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
+  const embed = new EmbedBuilder()
+    .setTitle("Close Request").setDescription("The ticket support would like to know whether or not you want to close the ticket.")
+    .setColor("#2A5CFF").setTimestamp();
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`closereq_yes_${message.author.id}`).setLabel("Yes").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`closereq_no_${message.author.id}`).setLabel("No").setStyle(ButtonStyle.Danger)
+  );
+  await message.channel.send({ embeds: [embed], components: [row] });
+  await message.delete().catch(() => {});
+  return;
+}
 
     if (cmd === "rename") {
-      if (!isAllowedRename) return staffReply("❌ Only ticket or order support staff can use this.");
-      const validCategories = [TICKET_CATEGORY, ORDER_TICKET_CATEGORY];
-      if (!validCategories.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
-      const newName = args.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "");
-      if (!newName) return staffReply("❌ Invalid name provided.");
-      const finalName = `🟢-${newName}`;
-      await message.channel.setName(finalName).catch(() => {});
-      claimedTickets.set(message.channel.id, message.author.tag);
-      const embed = new EmbedBuilder()
-        .setTitle("Ticket Renamed").setDescription(`This ticket has been renamed to **${finalName}** by ${message.author}.`)
-        .setColor("#2A5CFF").setTimestamp();
-      await message.author.send({ embeds: [embed] }).catch(() => {});
-      return;
-    }
+  if (!isAllowedRename) return staffReply("❌ Only ticket or order support staff can use this.");
+  const validCategories = [TICKET_CATEGORY, ORDER_TICKET_CATEGORY];
+  if (!validCategories.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
+  const newName = args.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "");
+  if (!newName) return staffReply("❌ Invalid name provided.");
+  const finalName = `🟢-${newName}`;
+  await message.channel.setName(finalName).catch(() => {});
+  claimedTickets.set(message.channel.id, message.author.tag);
+  const embed = new EmbedBuilder()
+    .setTitle("Ticket Renamed").setDescription(`This ticket has been renamed to **${finalName}** by ${message.author}.`)
+    .setColor("#2A5CFF").setTimestamp();
+  await message.channel.send({ embeds: [embed] });
+  await message.delete().catch(() => {});
+  return;
+}
 
     if (cmd === "status") {
       const entry = statusData[message.author.id];
