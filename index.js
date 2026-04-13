@@ -2070,8 +2070,9 @@ const giveawayMessage = await targetChannel.send({
 
   // ===== BOT APPROVAL =====
   if (interaction.isButton() && interaction.customId.startsWith("bot_")) {
-    const isMod = interaction.member.roles.cache.some(role => MOD_ROLE_ID.includes(role.id));
-    if (!isMod) return interaction.reply({ content: "❌ Only moderators can use this.", flags: 64 });
+    const BOT_APPROVAL_ROLES = [...MOD_ROLE_ID, "1489370034764779600"];
+const isMod = interaction.member.roles.cache.some(role => BOT_APPROVAL_ROLES.includes(role.id));
+if (!isMod) return interaction.reply({ content: "❌ Only moderators can use this.", flags: 64 });
     const [action, type, userId] = interaction.customId.split("_");
     if (action === "bot" && type === "deny") {
       const member = await interaction.guild.members.fetch(userId).catch(() => null);
