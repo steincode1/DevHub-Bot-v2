@@ -303,7 +303,6 @@ else timeStr = `${m} Minute${m !== 1 ? "s" : ""}`;
         type: 17,
         components: [
           { type: 10, content: `## ${giveaway.title}${giveaway.ping ? `\n-# ${giveaway.ping}` : ""}` },
-          { type: 10, content: giveaway.description },
           { type: 14 },
           { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${timeStr}` },
           { type: 14 },
@@ -1991,7 +1990,6 @@ const giveawayMessage = await targetChannel.send({
         type: 17,
         components: [
           { type: 10, content: `## ${giveaway.title}${giveaway.ping ? `\n-# ${giveaway.ping}` : ""}` },
-          { type: 10, content: giveaway.description },
           { type: 14 },
           { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${(() => { const ms = giveaway.endsAt - Date.now(); if (ms <= 0) return "Ended"; const d = Math.floor(ms / 86400000); const h = Math.floor((ms % 86400000) / 3600000); const m = Math.floor((ms % 3600000) / 60000); if (d > 0) return d + " Day" + (d !== 1 ? "s" : ""); if (h > 0) return h + " Hour" + (h !== 1 ? "s" : ""); return m + " Minute" + (m !== 1 ? "s" : ""); })()}` },
           { type: 10, content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD` },
@@ -2037,7 +2035,6 @@ const giveawayMessage = await targetChannel.send({
         type: 17,
         components: [
           { type: 10, content: `## ${giveaway.title}${giveaway.ping ? `\n-# ${giveaway.ping}` : ""}` },
-          { type: 10, content: giveaway.description },
           { type: 14 },
 { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${(() => { const ms = giveaway.endsAt - Date.now(); if (ms <= 0) return "Ended"; const d = Math.floor(ms / 86400000); const h = Math.floor((ms % 86400000) / 3600000); const m = Math.floor((ms % 3600000) / 60000); if (d > 0) return d + " Day" + (d !== 1 ? "s" : ""); if (h > 0) return h + " Hour" + (h !== 1 ? "s" : ""); return m + " Minute" + (m !== 1 ? "s" : ""); })()}` },
           { type: 10, content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD` },
