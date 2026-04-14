@@ -302,7 +302,7 @@ else timeStr = `${m} Minute${m !== 1 ? "s" : ""}`;
       components: [{
         type: 17,
         components: [
-          { type: 10, content: `## ${giveaway.title}` },
+          { type: 10, content: `## ${giveaway.title}${giveaway.ping ? `\n-# ${giveaway.ping}` : ""}` },
           { type: 10, content: giveaway.description },
           { type: 14 },
           { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${timeStr}` },
@@ -1371,7 +1371,7 @@ const commands = [
   // ===== GIVEAWAY =====
   new SlashCommandBuilder().setName('paid-ad').setDescription('Start a SPGW')
     .addStringOption(o => o.setName('title').setDescription('Title of the giveaway').setRequired(true))
-    .addStringOption(o => o.setName('description').setDescription('Description shown in the embed').setRequired(true))
+    .addStringOption(o => o.setName('description').setDescription('Description shown in the embed').setRequired(false))
     .addStringOption(o => o.setName('prize').setDescription('What the winner receives e.g. 20,000 Robux').setRequired(true))
     .addStringOption(o => o.setName('server_name').setDescription('Name of the server shown on the link button e.g. DevHub').setRequired(true))
     .addStringOption(o => o.setName('server_link').setDescription('Discord invite link shown in the embed').setRequired(true))
@@ -1858,6 +1858,7 @@ const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "he
         endsAt,
         createdAt: now,
         channelId: targetChannel.id,
+        ping: pingContent || null,
         messageId: null,
         entries: [],
         ended: false
@@ -1865,7 +1866,12 @@ const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "he
 
       await interaction.deferReply({ flags: 64 });
 
-      const giveawayMessage = await targetChannel.send({
+      if (pingContent) {
+  const pingMsg = await targetChannel.send(pingContent);
+  await pingMsg.delete().catch(() => {});
+}
+
+const giveawayMessage = await targetChannel.send({
   flags: 32768,
         components: [
           {
@@ -1984,7 +1990,7 @@ const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "he
       components: [{
         type: 17,
         components: [
-          { type: 10, content: `## ${giveaway.title}` },
+          { type: 10, content: `## ${giveaway.title}${giveaway.ping ? `\n-# ${giveaway.ping}` : ""}` },
           { type: 10, content: giveaway.description },
           { type: 14 },
           { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${(() => { const ms = giveaway.endsAt - Date.now(); if (ms <= 0) return "Ended"; const d = Math.floor(ms / 86400000); const h = Math.floor((ms % 86400000) / 3600000); const m = Math.floor((ms % 3600000) / 60000); if (d > 0) return d + " Day" + (d !== 1 ? "s" : ""); if (h > 0) return h + " Hour" + (h !== 1 ? "s" : ""); return m + " Minute" + (m !== 1 ? "s" : ""); })()}` },
@@ -2030,7 +2036,7 @@ const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "he
       components: [{
         type: 17,
         components: [
-          { type: 10, content: `## ${giveaway.title}` },
+          { type: 10, content: `## ${giveaway.title}${giveaway.ping ? `\n-# ${giveaway.ping}` : ""}` },
           { type: 10, content: giveaway.description },
           { type: 14 },
 { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${(() => { const ms = giveaway.endsAt - Date.now(); if (ms <= 0) return "Ended"; const d = Math.floor(ms / 86400000); const h = Math.floor((ms % 86400000) / 3600000); const m = Math.floor((ms % 3600000) / 60000); if (d > 0) return d + " Day" + (d !== 1 ? "s" : ""); if (h > 0) return h + " Hour" + (h !== 1 ? "s" : ""); return m + " Minute" + (m !== 1 ? "s" : ""); })()}` },
