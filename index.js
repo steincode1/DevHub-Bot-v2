@@ -1865,9 +1865,7 @@ const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "he
 
       await interaction.deferReply({ flags: 64 });
 
-      if (pingContent) await targetChannel.send(pingContent);
-
-const giveawayMessage = await targetChannel.send({
+      const giveawayMessage = await targetChannel.send({
   flags: 32768,
         components: [
           {
@@ -1875,11 +1873,7 @@ const giveawayMessage = await targetChannel.send({
             components: [
               {
                 type: 10,
-                content: `## ${giveaway.title}`
-              },
-              {
-                type: 10,
-                content: giveaway.description
+                content: `## ${giveaway.title}${pingContent ? `\n-# ${pingContent}` : ""}`
               },
               { type: 14 },
               {
