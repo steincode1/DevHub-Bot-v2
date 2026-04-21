@@ -1080,7 +1080,8 @@ async function persistReply(content) {
   const inviteRegex = /(discord\.gg|discord\.com\/invite)\/[a-zA-Z0-9]+/gi;
   if (inviteRegex.test(message.content)) {
     const ticketCategories = ["1487555806202171533", "1491270734985822380"];
-    const isTicketChannel = ticketCategories.includes(message.channel.parentId);
+const bypassChannels = ["1494830703651586169"];
+const isTicketChannel = ticketCategories.includes(message.channel.parentId) || bypassChannels.includes(message.channel.id);
     if (isTicketChannel) {
       // Allow discord invites in ticket categories
     } else {
@@ -1097,7 +1098,8 @@ async function persistReply(content) {
 const links = message.content.match(urlRegex);
 if (links) {
   const ticketCategories = ["1487555806202171533", "1491270734985822380"];
-  const isTicketChannel = ticketCategories.includes(message.channel.parentId);
+const bypassChannels = ["1494830703651586169"];
+const isTicketChannel = ticketCategories.includes(message.channel.parentId) || bypassChannels.includes(message.channel.id);
   if (isTicketChannel) {
     // Allow all links in ticket categories
   } else {
@@ -2060,12 +2062,84 @@ const giveawayMessage = await targetChannel.send({
     const userId = parts[2];
     const targetUser = await client.users.fetch(userId).catch(() => null);
     if (action === "approve") {
-      const member = await interaction.guild.members.fetch(userId).catch(() => null);
-      if (member) {
-        await targetUser?.send("Congratulations! You have entered stage 2 of the application. Please open a **Management** Ticket to start your interview.").catch(() => {});
-      }
-      return interaction.update({ content: `✅ Approved by ${interaction.user.tag}`, components: [] });
+  const member = await interaction.guild.members.fetch(userId).catch(() => null);
+
+  let ticketChannel = null;
+
+  if (member) {
+    // ── WHY: We build the channel name the same way your existing ticket system does,
+    //    using their username cleaned to only letters/numbers so Discord accepts it.
+    const cleanName = member.user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // ── WHY: We set up permission overwrites so only the applicant,
+    //    management roles, and the bot can see this channel.
+    //    This mirrors exactly what your mgmt_ticket flow already does.
+    ticketChannel = await interaction.guild.channels.create({
+      name: `🟢-designer-p2-${cleanName}`,
+      type: ChannelType.GuildText,
+      parent: TICKET_CATEGORY,
+      permissionOverwrites: [
+        { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        { id: member.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: "1492618251535126608", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: "1489370034764779600", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+      ]
+    }).catch(() => null);
+
+    if (ticketChannel) {
+      // ── WHY: We ping the management roles first (separate message) so they
+      //    get a notification, same pattern as your existing ticket system.
+      await ticketChannel.send(`<@&1492618251535126608> <@&1489370034764779600>`);
+
+      const ticketEmbed = new EmbedBuilder()
+        .setTitle("Designer Application — Part 2")
+        .setDescription(
+          `Welcome ${member}, congratulations on passing the first stage of the designer application!\n\n` +
+          `A member of management will be with you shortly to conduct your interview. ` +
+          `Please be patient and have any additional portfolio pieces ready if needed.`
+        )
+        .addFields({ name: "Reason", value: "Designer Application — Part 2" })
+        .setColor("#2A5CFF")
+        .setFooter({ text: `Application approved by ${interaction.user.tag}` })
+        .setTimestamp();
+
+      // ── WHY: We add close/claim buttons so staff can manage this ticket
+      //    exactly like any other ticket in your system.
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claim").setStyle(ButtonStyle.Success)
+      );
+
+      await ticketChannel.send({ embeds: [ticketEmbed], components: [buttons] });
     }
+
+    // ── WHY: We only mention the ticket channel if it was actually created.
+    //    If something went wrong with channel creation, we fall back to a
+    //    generic message so the applicant isn't left with nothing.
+    if (ticketChannel) {
+      await targetUser?.send(
+        `Congratulations! Your designer application has been approved and you have progressed to **Stage 2**.\n\n` +
+        `A management ticket has been opened for you in **DevHub** — head over to ${ticketChannel} to begin your interview. ` +
+        `Please be patient while a member of management gets with you.`
+      ).catch(() => {});
+    } else {
+      await targetUser?.send(
+        `Congratulations! Your designer application has been approved and you have progressed to **Stage 2**.\n\n` +
+        `Please head to **DevHub** and open a Management ticket to begin your interview.`
+      ).catch(() => {});
+    }
+  }
+
+  // ── WHY: interaction.update() edits the original application message in the
+  //    log channel, replacing the approve/deny buttons with a status line.
+  //    We include the ticket channel in the update if it was created.
+  return interaction.update({
+    content: ticketChannel
+      ? `✅ Approved by ${interaction.user.tag} — ticket created: ${ticketChannel}`
+      : `✅ Approved by ${interaction.user.tag} — ticket creation failed, please create manually`,
+    components: []
+  });
+}
     if (action === "deny") {
       applicationCooldowns.set(userId, { deniedAt: Date.now() });
       saveCooldowns();
