@@ -62,9 +62,11 @@ const STATUS_UPDATE_ROLE_ID = "1489098884700700793";
 const TICKET_PANEL_CHANNEL = "1487555705400463491";
 const TICKET_CATEGORY = "1487555806202171533";
 const TICKET_SUPPORT_ROLE = "1487555904390828052";
+const TICKET_EXTRA_ROLE = "1489098884700700793"; // additional role allowed for all ticket commands
 const ORDER_PANEL_CHANNEL = "1489095803896074320";
 const ORDER_TICKET_CATEGORY = "1491270734985822380";
 const ORDER_SUPPORT_ROLE = "1489098884700700793";
+const TICKET_VALID_CATEGORIES = ["1487555806202171533", "1491270734985822380"];
 
 // ===== RAID PREVENTION =====
 const RAID_JOIN_THRESHOLD = 5;
@@ -114,41 +116,12 @@ function addLog(userId, type, moderator, reason) {
   saveLogs();
 }
 
-// ===== GIVEAWAY HELPER =====
-function buildGiveawayEmbed(giveaway) {
-  const now = Date.now();
-  const endsAt = giveaway.endsAt;
-  let durationText;
-  if (now >= endsAt) {
-    durationText = "Ended";
-  } else {
-    const msLeft = endsAt - now;
-    const days = Math.floor(msLeft / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((msLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
-    if (days > 0) durationText = `In ${days} day${days !== 1 ? "s" : ""}`;
-    else if (hours > 0) durationText = `In ${hours} hour${hours !== 1 ? "s" : ""}`;
-    else durationText = `In ${minutes} minute${minutes !== 1 ? "s" : ""}`;
-  }
-
-  return new EmbedBuilder()
-    .setTitle(giveaway.title)
-    .setDescription(
-      giveaway.description + `\n\n` +
-      `\n―――――――――――――――――――――――――――――\n\n` +
-      `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n` +
-      `• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n` +
-      `• <:clockk:1492371699730087987> **Duration:** In ${durationMinutes / 60 / 24} day${durationMinutes / 60 / 24 !== 1 ? "s" : ""}`
-      `\n―――――――――――――――――――――――――――――\n\n` +
-      `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\n` +
-      `Winner(s): ${giveaway.winners && giveaway.winners.length > 0 ? giveaway.winners.map(id => `<@${id}>`).join(", ") : "TBD"}\n` +
-      `\n―――――――――――――――――――――――――――――`
-    )
-    .setThumbnail(`https://cdn.discordapp.com/guilds/${GUILD_ID}/icons/placeholder.png`)
-    .setColor("#2A5CFF")
-    .setImage("https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp");
+// ===== TICKET STAFF CHECK =====
+function isTicketStaffMember(member) {
+  return member.roles.cache.has(TICKET_SUPPORT_ROLE) || member.roles.cache.has(TICKET_EXTRA_ROLE);
 }
 
+// ===== GIVEAWAY HELPER =====
 function buildGiveawayComponents(giveaway) {
   const entryCount = giveaway.entries ? giveaway.entries.length : 0;
   return new ActionRowBuilder().addComponents(
@@ -189,7 +162,6 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
     const winnerId = entries[Math.floor(Math.random() * entries.length)];
 
     giveaway.winners = [winnerId];
-
     giveaway.ended = true;
     saveGiveaways();
 
@@ -219,8 +191,8 @@ async function concludeGiveaway(giveawayId, rerollBy = null) {
               content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): ${giveaway.winners.map(id => `<@${id}>`).join(", ")}`
             },
             {
-  type: 1,
-  components: [
+              type: 1,
+              components: [
                 {
                   type: 2,
                   style: 1,
@@ -289,12 +261,12 @@ async function updateGiveawayTimer(giveawayId) {
     const ms = giveaway.endsAt - Date.now();
     if (ms <= 0) return;
     const d = Math.floor(ms / 86400000);
-const h = Math.floor((ms % 86400000) / 3600000);
-const m = Math.floor((ms % 3600000) / 60000);
-let timeStr;
-if (d > 0) timeStr = `${d} Day${d !== 1 ? "s" : ""}`;
-else if (h > 0) timeStr = `${h} Hour${h !== 1 ? "s" : ""}`;
-else timeStr = `${m} Minute${m !== 1 ? "s" : ""}`;
+    const h = Math.floor((ms % 86400000) / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    let timeStr;
+    if (d > 0) timeStr = `${d} Day${d !== 1 ? "s" : ""}`;
+    else if (h > 0) timeStr = `${h} Hour${h !== 1 ? "s" : ""}`;
+    else timeStr = `${m} Minute${m !== 1 ? "s" : ""}`;
 
     const entryCount = giveaway.entries ? giveaway.entries.length : 0;
 
@@ -328,7 +300,7 @@ function startGiveawayTimers() {
         updateGiveawayTimer(id);
       }
     }
-  }, 5000); // updates every 30 seconds
+  }, 5000);
 }
 
 // ===== APPLICATION SESSION TRACKING =====
@@ -380,7 +352,7 @@ client.once("clientReady", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
   client.user.setPresence({
-    activities: [{ name: "Powering DevHub", type: 3 }],
+    activities: [{ name: "Powering Vital", type: 3 }],
     status: "online"
   });
 
@@ -405,91 +377,87 @@ client.once("clientReady", async () => {
           components: [
             {
               type: 12,
-              items: [{ media: { url: "https://cdn.discordapp.com/attachments/1487555326713528494/1490516882309255278/I4.webp" } }]
+              items: [{ media: { url: "https://cdn.discordapp.com/attachments/1491660481000116234/1500149259306143784/VITAL_BANNERS_-_SUPPORT.png" } }]
             },
             {
               type: 10,
-              content: "# <:d11:1490211876007841823> Server Support\n\n> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason."
+              content: "# <:VITAL:1499993149597028402> Server Support\n\n> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason."
             },
             {
               type: 14
             },
-           {
-  type: 9,
-  components: [
-    {
-      type: 10,
-      content: "## <:generalsupport:1492370538159407165> **General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
-    }
-  ],
-  accessory: {
-    type: 2,
-    style: 3,
-    label: "Available",
-    custom_id: "badge_general",
-    disabled: true
-  }
-},
-{
-  type: 14
-},
-{
-  type: 9,
-  components: [
-    {
-      type: 10,
-      content: "## <:Oversight_support:1492370948744020079> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
-    }
-  ],
-  accessory: {
-    type: 2,
-    style: 3,
-    label: "Available",
-    custom_id: "badge_oversight",
-    disabled: true
-  }
-},
-{
-  type: 14
-},
-{
-  type: 9,
-  components: [
-    {
-      type: 10,
-      content: "## <:Management_support:1492371200436076625> **Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
-    }
-  ],
-  accessory: {
-    type: 2,
-    style: 3,
-    label: "Available",
-    custom_id: "badge_mgmt",
-    disabled: true
-  }
-},
-{
-  type: 14
-},
-{
-  type: 9,
-  components: [
-    {
-      type: 10,
-      content: "## <:ticket_rules:1492372161518899372> **Please Read Before Opening a Ticket:**\n<:CF11:1488888964755492944> Do not __spam__ tickets\n<:CF11:1488888964755492944> Provide __detailed__ information\n<:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
-    }
-  ],
-  accessory: {
-    type: 2,
-    style: 2,
-    label: "Please Read",
-    custom_id: "badge_read",
-    disabled: true
-  }
-},
             {
-              type: 12,
-              items: [{ media: { url: "https://cdn.discordapp.com/attachments/1487555326713528494/1490517079114256445/I13.webp" } }]
+              type: 9,
+              components: [
+                {
+                  type: 10,
+                  content: "## <:generalsupport:1492370538159407165> **General Support:**\n<:CF11:1488888964755492944> Questions\n<:CF11:1488888964755492944> Concerns\n<:CF11:1488888964755492944> Member Report"
+                }
+              ],
+              accessory: {
+                type: 2,
+                style: 3,
+                label: "Available",
+                custom_id: "badge_general",
+                disabled: true
+              }
+            },
+            {
+              type: 14
+            },
+            {
+              type: 9,
+              components: [
+                {
+                  type: 10,
+                  content: "## <:Oversight_support:1492370948744020079> **Oversight Support:**\n<:CF11:1488888964755492944> Employee Report\n<:CF11:1488888964755492944> Scam Report\n<:CF11:1488888964755492944> LOA Request"
+                }
+              ],
+              accessory: {
+                type: 2,
+                style: 3,
+                label: "Available",
+                custom_id: "badge_oversight",
+                disabled: true
+              }
+            },
+            {
+              type: 14
+            },
+            {
+              type: 9,
+              components: [
+                {
+                  type: 10,
+                  content: "## <:Management_support:1492371200436076625> **Management Support:**\n<:CF11:1488888964755492944> High Rank Inquires\n<:CF11:1488888964755492944> Role Request\n<:CF11:1488888964755492944> Purchase Inquires"
+                }
+              ],
+              accessory: {
+                type: 2,
+                style: 3,
+                label: "Available",
+                custom_id: "badge_mgmt",
+                disabled: true
+              }
+            },
+            {
+              type: 14
+            },
+            {
+              type: 9,
+              components: [
+                {
+                  type: 10,
+                  content: "## <:ticket_rules:1492372161518899372> **Please Read Before Opening a Ticket:**\n<:CF11:1488888964755492944> Do not __spam__ tickets\n<:CF11:1488888964755492944> Provide __detailed__ information\n<:CF11:1488888964755492944> Be __patient__ while waiting, Do __not__ ping"
+                }
+              ],
+              accessory: {
+                type: 2,
+                style: 2,
+                label: "Please Read",
+                custom_id: "badge_read",
+                disabled: true
+              }
             },
             {
               type: 1,
@@ -515,15 +483,15 @@ client.once("clientReady", async () => {
   const orderPanelChannel = await guild.channels.fetch(ORDER_PANEL_CHANNEL).catch(() => null);
   if (orderPanelChannel) {
     const orderPanelEmbed = new EmbedBuilder()
-      .setColor("#2b2d31")
+      .setColor("#67b5ff")
       .setDescription("Click below to begin your order!")
-      .setFooter({ text: "Developer Hub • Order System" });
+      .setFooter({ text: "Vital • Order System" });
 
     const orderRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("place_order_btn")
         .setLabel("Order Here!")
-        .setEmoji({ id: "1490211876007841823", name: "DevHub" })
+        .setEmoji({ id: "1499993149597028402", name: "VITAL" })
         .setStyle(ButtonStyle.Primary)
     );
 
@@ -592,7 +560,7 @@ client.on("guildMemberAdd", async member => {
     const embed = new EmbedBuilder()
       .setTitle("🤖 Bot Joined")
       .setDescription(`Bot: ${member}\nTag: ${member.user.tag}\n\nApprove or deny this bot.`)
-      .setColor("#ff9900").setTimestamp();
+      .setColor("#67b5ff").setTimestamp();
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`bot_deny_${member.id}`).setLabel("Deny").setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId(`bot_confirm_${member.id}`).setLabel("Confirm").setStyle(ButtonStyle.Success)
@@ -619,7 +587,7 @@ client.on("guildMemberAdd", async member => {
   }
 
   const welcomeChannel = member.guild.channels.cache.get("1482878525286650048");
-  if (welcomeChannel) welcomeChannel.send(`Welcome ${member} to DevHub! We now have ${member.guild.memberCount} members.`);
+  if (welcomeChannel) welcomeChannel.send(`Welcome ${member} to Vital! We now have ${member.guild.memberCount} members.`);
   inviteCache.set(member.guild.id, newInvites);
 });
 
@@ -650,7 +618,7 @@ function sendAutomodLog(guild, user, channel, rule, action) {
   const logChannel = guild.channels.cache.get(FULL_LOG_CHANNEL_ID);
   if (!logChannel) return;
   const embed = new EmbedBuilder()
-    .setTitle("🤖 Automod Action").setColor("#ff4444").setThumbnail(user.displayAvatarURL())
+    .setTitle("🤖 Automod Action").setColor("#67b5ff").setThumbnail(user.displayAvatarURL())
     .addFields(
       { name: "User", value: `${user.tag} (${user.id})`, inline: true },
       { name: "Channel", value: `<#${channel.id}>`, inline: true },
@@ -677,19 +645,19 @@ client.on("messageCreate", async message => {
     const args = message.content.slice(1).trim().split(/\s+/);
     const cmd = args.shift().toLowerCase();
     const isMod = message.member.roles.cache.some(r => MOD_ROLE_ID.includes(r.id));
-    const isTicketStaff = message.member.roles.cache.has(TICKET_SUPPORT_ROLE);
+    const isTicketStaff = isTicketStaffMember(message.member);
     const isOrderStaff = message.member.roles.cache.has(ORDER_SUPPORT_ROLE);
     const isStatusStaff = message.member.roles.cache.has(STATUS_UPDATE_ROLE_ID);
     const isAllowedRename = isTicketStaff || isOrderStaff;
 
     async function staffReply(content) {
-  const m = await message.reply(content);
-  setTimeout(() => m.delete().catch(() => {}), 5000);
-}
+      const m = await message.reply(content);
+      setTimeout(() => m.delete().catch(() => {}), 5000);
+    }
 
-async function persistReply(content) {
-  return message.reply(content);
-}
+    async function persistReply(content) {
+      return message.reply(content);
+    }
 
     async function resolveUser(arg) {
       if (!arg) return null;
@@ -734,10 +702,10 @@ async function persistReply(content) {
       await target.roles.add(role).catch(() => {});
       addLog(target.id, "Promotion", message.author.tag, reason);
       const embed = new EmbedBuilder()
-        .setTitle("<:DevHub:1490211876007841823> | **Staff Promotion**")
+        .setTitle("<:VITAL:1499993149597028402> | **Staff Promotion**")
         .setDescription(`Congratulations! ${target} has been promoted by ${message.author}.`)
         .addFields({ name: "Staff Member", value: `${target}`, inline: false }, { name: "New Rank", value: `${role}`, inline: false }, { name: "Reason", value: reason, inline: false })
-        .setColor("#2582F5").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Promotion issued by ${message.author.tag}` }).setTimestamp();
+        .setColor("#67b5ff").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Promotion issued by ${message.author.tag}` }).setTimestamp();
       const logChannel = message.guild.channels.cache.get("1489097136929902624");
       if (logChannel) logChannel.send({ content: `${target}`, embeds: [embed] });
       return staffReply("✅ Promotion sent.");
@@ -757,9 +725,9 @@ async function persistReply(content) {
       await target.roles.add(demotedRole).catch(() => {});
       addLog(target.id, "Demotion", message.author.tag, reason);
       const embed = new EmbedBuilder()
-        .setTitle("<:DevHub:1490211876007841823> | **Demotion**").setDescription(`${target} has been demoted to ${demotedRole}.`)
+        .setTitle("<:VITAL:1499993149597028402> | **Demotion**").setDescription(`${target} has been demoted to ${demotedRole}.`)
         .addFields({ name: "Person", value: `${target}`, inline: false }, { name: "New Role", value: `${demotedRole}`, inline: false }, { name: "Reason", value: reason, inline: false })
-        .setColor("#2b2d31").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Demoted by ${message.author.tag}` }).setTimestamp();
+        .setColor("#67b5ff").setThumbnail(target.user.displayAvatarURL()).setFooter({ text: `Demoted by ${message.author.tag}` }).setTimestamp();
       const logChannel = message.guild.channels.cache.get("1489097083029033060");
       if (logChannel) logChannel.send({ content: `${target}`, embeds: [embed] });
       return staffReply("✅ Demotion sent.");
@@ -799,7 +767,7 @@ async function persistReply(content) {
       if (!target) return staffReply("❌ User not found in server.");
       addLog(target.id, "Permanent Ban", message.author.tag, reason);
       await target.ban({ reason });
-      const embed = new EmbedBuilder().setTitle(`${target.user.tag} | Ban`).setDescription(`Banned by ${message.author.tag}\nReason: ${reason}`).setColor(0xff0000).setTimestamp();
+      const embed = new EmbedBuilder().setTitle(`${target.user.tag} | Ban`).setDescription(`Banned by ${message.author.tag}\nReason: ${reason}`).setColor("#67b5ff").setTimestamp();
       message.guild.channels.cache.get(BAN_LOG_CHANNEL)?.send({ embeds: [embed] });
       return staffReply(`${target.user.tag} banned.`);
     }
@@ -830,7 +798,7 @@ async function persistReply(content) {
       const embed = new EmbedBuilder()
         .setTitle("Strike").setDescription(`${user} has been issued a strike by ${message.author}.`)
         .addFields({ name: "> User", value: `${user}`, inline: false }, { name: "> Punishment", value: `Strike ${strikes}`, inline: false }, { name: "> Reason", value: reason, inline: false })
-        .setColor("#2b2d31").setThumbnail(user.displayAvatarURL()).setFooter({ text: `Strike issued by ${message.author.tag}` }).setTimestamp();
+        .setColor("#67b5ff").setThumbnail(user.displayAvatarURL()).setFooter({ text: `Strike issued by ${message.author.tag}` }).setTimestamp();
       const logChannel = message.guild.channels.cache.get("1489097083029033060");
       if (logChannel) logChannel.send({ content: `<@${user.id}>`, embeds: [embed] });
       staffReply("✅ Strike issued.");
@@ -934,23 +902,25 @@ async function persistReply(content) {
     }
 
     if (cmd === "claim") {
-  if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
-  if (claimedTickets.has(message.channel.id)) {
-    const claimerTag = claimedTickets.get(message.channel.id);
-    return staffReply(`❌ This ticket has already been claimed by **${claimerTag}**.`);
-  }
-  claimedTickets.set(message.channel.id, message.author.tag);
-  if (message.channel.name.startsWith("🔴-")) {
-    await message.channel.setName(`🟢-${message.channel.name.replace("🔴-", "")}`).catch(() => {});
-  }
-  const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${message.author}.`).setColor("#2A5CFF").setTimestamp();
-  await message.channel.send({ embeds: [embed] });
-  await message.delete().catch(() => {});
-  return;
-}
+      if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
+      if (!TICKET_VALID_CATEGORIES.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
+      if (claimedTickets.has(message.channel.id)) {
+        const claimerTag = claimedTickets.get(message.channel.id);
+        return staffReply(`❌ This ticket has already been claimed by **${claimerTag}**.`);
+      }
+      claimedTickets.set(message.channel.id, message.author.tag);
+      if (message.channel.name.startsWith("🔴-")) {
+        await message.channel.setName(`🟢-${message.channel.name.replace("🔴-", "")}`).catch(() => {});
+      }
+      const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${message.author}.`).setColor("#67b5ff").setTimestamp();
+      await message.channel.send({ embeds: [embed] });
+      await message.delete().catch(() => {});
+      return;
+    }
 
     if (cmd === "close") {
       if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
+      if (!TICKET_VALID_CATEGORIES.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
       const reason = args.join(" ") || "No reason provided";
       const channel = message.channel;
       const channelName = channel.name;
@@ -964,7 +934,7 @@ async function persistReply(content) {
       const transcriptEmbed = new EmbedBuilder()
         .setTitle(`${ticketType} - ${opener.tag}`)
         .setDescription(`**Closed by:** ${message.author}\n**Reason:** ${reason}\n\n**Transcript:**\n\`\`\`${transcript.slice(0, 3500) || "No messages found."}\`\`\``)
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       const transcriptChannel = message.guild.channels.cache.get("1489108262774247605");
       if (transcriptChannel) await transcriptChannel.send({ embeds: [transcriptEmbed] });
       claimedTickets.delete(channel.id);
@@ -974,35 +944,35 @@ async function persistReply(content) {
     }
 
     if (cmd === "closereq") {
-  if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
-  const embed = new EmbedBuilder()
-    .setTitle("Close Request").setDescription("The ticket support would like to know whether or not you want to close the ticket.")
-    .setColor("#2A5CFF").setTimestamp();
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`closereq_yes_${message.author.id}`).setLabel("Yes").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`closereq_no_${message.author.id}`).setLabel("No").setStyle(ButtonStyle.Danger)
-  );
-  await message.channel.send({ embeds: [embed], components: [row] });
-  await message.delete().catch(() => {});
-  return;
-}
+      if (!isTicketStaff) return staffReply("❌ Only ticket staff can use this.");
+      if (!TICKET_VALID_CATEGORIES.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
+      const embed = new EmbedBuilder()
+        .setTitle("Close Request").setDescription("The ticket support would like to know whether or not you want to close the ticket.")
+        .setColor("#67b5ff").setTimestamp();
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`closereq_yes_${message.author.id}`).setLabel("Yes").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`closereq_no_${message.author.id}`).setLabel("No").setStyle(ButtonStyle.Danger)
+      );
+      await message.channel.send({ embeds: [embed], components: [row] });
+      await message.delete().catch(() => {});
+      return;
+    }
 
     if (cmd === "rename") {
-  if (!isAllowedRename) return staffReply("❌ Only ticket or order support staff can use this.");
-  const validCategories = [TICKET_CATEGORY, ORDER_TICKET_CATEGORY];
-  if (!validCategories.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
-  const newName = args.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "");
-  if (!newName) return staffReply("❌ Invalid name provided.");
-  const finalName = `🟢-${newName}`;
-  await message.channel.setName(finalName).catch(() => {});
-  claimedTickets.set(message.channel.id, message.author.tag);
-  const embed = new EmbedBuilder()
-    .setTitle("Ticket Renamed").setDescription(`This ticket has been renamed to **${finalName}** by ${message.author}.`)
-    .setColor("#2A5CFF").setTimestamp();
-  await message.channel.send({ embeds: [embed] });
-  await message.delete().catch(() => {});
-  return;
-}
+      if (!isAllowedRename) return staffReply("❌ Only ticket or order support staff can use this.");
+      if (!TICKET_VALID_CATEGORIES.includes(message.channel.parentId)) return staffReply("❌ This command can only be used inside a ticket channel.");
+      const newName = args.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "");
+      if (!newName) return staffReply("❌ Invalid name provided.");
+      const finalName = `🟢-${newName}`;
+      await message.channel.setName(finalName).catch(() => {});
+      claimedTickets.set(message.channel.id, message.author.tag);
+      const embed = new EmbedBuilder()
+        .setTitle("Ticket Renamed").setDescription(`This ticket has been renamed to **${finalName}** by ${message.author}.`)
+        .setColor("#67b5ff").setTimestamp();
+      await message.channel.send({ embeds: [embed] });
+      await message.delete().catch(() => {});
+      return;
+    }
 
     if (cmd === "status") {
       const entry = statusData[message.author.id];
@@ -1011,7 +981,7 @@ async function persistReply(content) {
       const embed = new EmbedBuilder()
         .setTitle("Order Status")
         .addFields({ name: "Status", value: statusMap[entry.status] || "Unknown" }, { name: "Last Updated", value: entry.updatedAt })
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       const m = await message.reply({ embeds: [embed] });
       setTimeout(() => m.delete().catch(() => {}), 5000);
       return;
@@ -1023,7 +993,7 @@ async function persistReply(content) {
       const newStatus = args[1]?.toLowerCase();
       const validStatuses = ["paymentpending", "inprogress", "completed"];
       if (!user) return staffReply("❌ User not found.");
-      if (!validStatuses.includes(newStatus)) return staffReply("❌ Status must be: `pending`, `inprogress`, or `completed`.");
+      if (!validStatuses.includes(newStatus)) return staffReply("❌ Status must be: `paymentpending`, `inprogress`, or `completed`.");
       const statusMap = { paymentpending: "💳 Payment Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
       statusData[user.id] = { status: newStatus, updatedAt: new Date().toLocaleString() };
       saveStatuses();
@@ -1037,7 +1007,7 @@ async function persistReply(content) {
       const chargeAmount = Math.ceil(amount / 0.7);
       const embed = new EmbedBuilder()
         .setTitle("Tax Calculation").setDescription(`Including the Roblox Tax, you would have to charge **${chargeAmount} robux**.`)
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       const m = await message.reply({ embeds: [embed] });
       setTimeout(() => m.delete().catch(() => {}), 5000);
       return;
@@ -1048,7 +1018,7 @@ async function persistReply(content) {
       if (!user) return staffReply("❌ User not found.");
       const embed = new EmbedBuilder()
         .setDescription(`${user.username} | ${user.id}`)
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       const m = await message.reply({ embeds: [embed] });
       setTimeout(() => m.delete().catch(() => {}), 5000);
       return;
@@ -1079,12 +1049,9 @@ async function persistReply(content) {
 
   const inviteRegex = /(discord\.gg|discord\.com\/invite)\/[a-zA-Z0-9]+/gi;
   if (inviteRegex.test(message.content)) {
-    const ticketCategories = ["1487555806202171533", "1491270734985822380"];
-const bypassChannels = ["1494830703651586169"];
-const isTicketChannel = ticketCategories.includes(message.channel.parentId) || bypassChannels.includes(message.channel.id);
-    if (isTicketChannel) {
-      // Allow discord invites in ticket categories
-    } else {
+    const bypassChannels = ["1494830703651586169"];
+    const isTicketChannel = TICKET_VALID_CATEGORIES.includes(message.channel.parentId) || bypassChannels.includes(message.channel.id);
+    if (!isTicketChannel) {
       await message.delete().catch(() => {});
       await message.member.timeout(5 * 60 * 1000).catch(() => {});
       await message.author.send("Do not advertise other Discord servers.").catch(() => {});
@@ -1095,23 +1062,20 @@ const isTicketChannel = ticketCategories.includes(message.channel.parentId) || b
   }
 
   const urlRegex = /https?:\/\/[^\s]+/gi;
-const links = message.content.match(urlRegex);
-if (links) {
-  const ticketCategories = ["1487555806202171533", "1491270734985822380"];
-const bypassChannels = ["1494830703651586169"];
-const isTicketChannel = ticketCategories.includes(message.channel.parentId) || bypassChannels.includes(message.channel.id);
-  if (isTicketChannel) {
-    // Allow all links in ticket categories
-  } else {
-    const isAllowed = links.every(link => WHITELISTED_LINKS.some(domain => link.includes(domain)));
-    if (!isAllowed || isNewMember) {
-      await message.delete().catch(() => {});
-      await message.channel.send(`${message.author} Links are not permitted here.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
-      sendAutomodLog(message.guild, message.author, message.channel, "Unauthorised Link", "Message Deleted");
-      return;
+  const links = message.content.match(urlRegex);
+  if (links) {
+    const bypassChannels = ["1494830703651586169"];
+    const isTicketChannel = TICKET_VALID_CATEGORIES.includes(message.channel.parentId) || bypassChannels.includes(message.channel.id);
+    if (!isTicketChannel) {
+      const isAllowed = links.every(link => WHITELISTED_LINKS.some(domain => link.includes(domain)));
+      if (!isAllowed || isNewMember) {
+        await message.delete().catch(() => {});
+        await message.channel.send(`${message.author} Links are not permitted here.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+        sendAutomodLog(message.guild, message.author, message.channel, "Unauthorised Link", "Message Deleted");
+        return;
+      }
     }
   }
-}
 
   const mentionCount = message.mentions.users.size + message.mentions.roles.size;
   if (mentionCount > MASS_MENTION_LIMIT) {
@@ -1227,7 +1191,7 @@ client.on("messageCreate", async message => {
         "Thank you for applying to become a designer! Please follow these instructions so you can submit and finish the application.\n\n" +
         "When you finish reading this please say **ready** to start the application.\n\n" +
         "Once done those questions say **done** and then follow the instructions that you are given. If you feel like canceling at any point please just say **cancel**. Good luck!"
-      ).setColor("#2A5CFF").setTimestamp();
+      ).setColor("#67b5ff").setTimestamp();
     await message.author.send({ embeds: [instructionsEmbed] }).catch(() => {});
     return;
   }
@@ -1243,7 +1207,7 @@ client.on("messageCreate", async message => {
         "Thank you for taking your time to apply for our designer application! Please answer the following questions in this personal message and they will be forwarded to our applications team. Without further ado lets begin.\n\n" +
         "**Q1 -** What is your Roblox Username?\n**Q2 -** What do you focus on? (GFX, Clothing, etc)\n**Q3 -** How old are you?\n**Q4 -** What design tools do you use?\n**Q5 -** Do you have any previous experience designing for Roblox groups or communities? If yes, explain.\n**Q6 -** How would you handle a request from a client that you disagree with or find difficult?\n**Q7 -** How do you ensure your designs are high quality and meet requirements?\n**Q8 -** Are you able to meet deadlines and work under pressure? Explain your approach.\n**Q9 -** How do you handle feedback or criticism on your designs?\n**Q10 -** Is there anything else we should know about you or your design experience?\n\n" +
         "***Once you are finished answering these questions please say **\"done\"** and we will continue with the application.***"
-      ).setColor("#2A5CFF").setTimestamp();
+      ).setColor("#67b5ff").setTimestamp();
     await message.author.send({ embeds: [questionsEmbed] }).catch(() => {});
     return;
   }
@@ -1259,7 +1223,7 @@ client.on("messageCreate", async message => {
     session.state = "awaiting_images";
     applicationSessions.set(userId, session);
     scheduleApplicationTimeout(userId);
-    await message.author.send({ embeds: [new EmbedBuilder().setTitle("Almost there!").setDescription("Please finish by providing images of your previous work.").setColor("#2A5CFF").setTimestamp()] }).catch(() => {});
+    await message.author.send({ embeds: [new EmbedBuilder().setTitle("Almost there!").setDescription("Please finish by providing images of your previous work.").setColor("#67b5ff").setTimestamp()] }).catch(() => {});
     return;
   }
 
@@ -1275,7 +1239,7 @@ client.on("messageCreate", async message => {
       const answersText = session.answers.length > 0 ? session.answers.map((a, i) => `**Q${i + 1}:** ${a}`).join("\n") : "No answers recorded.";
       const appEmbed = new EmbedBuilder()
         .setTitle(`Designer Application — ${message.author.tag}`)
-        .setDescription(answersText).setColor("#2A5CFF")
+        .setDescription(answersText).setColor("#67b5ff")
         .setThumbnail(message.author.displayAvatarURL())
         .setFooter({ text: `User ID: ${message.author.id}` }).setTimestamp();
       const approveRow = new ActionRowBuilder().addComponents(
@@ -1374,7 +1338,7 @@ const commands = [
     .addStringOption(o => o.setName('title').setDescription('Title of the giveaway').setRequired(true))
     .addStringOption(o => o.setName('description').setDescription('Description shown in the embed').setRequired(false))
     .addStringOption(o => o.setName('prize').setDescription('What the winner receives e.g. 20,000 Robux').setRequired(true))
-    .addStringOption(o => o.setName('server_name').setDescription('Name of the server shown on the link button e.g. DevHub').setRequired(true))
+    .addStringOption(o => o.setName('server_name').setDescription('Name of the server shown on the link button e.g. Vital').setRequired(true))
     .addStringOption(o => o.setName('server_link').setDescription('Discord invite link shown in the embed').setRequired(true))
     .addStringOption(o => o.setName('duration').setDescription('How long the giveaway lasts').setRequired(true)
       .addChoices(
@@ -1385,13 +1349,13 @@ const commands = [
         { name: '14 Days', value: '20160' }
       ))
     .addChannelOption(o => o.setName('channel').setDescription('Channel to post the giveaway in').setRequired(true))
-.addStringOption(o => o.setName('ping').setDescription('Who to ping').setRequired(true)
-  .addChoices(
-    { name: 'No Ping', value: 'none' },
-    { name: '@here', value: 'here' },
-    { name: '@everyone', value: 'everyone' }
-  ))
-.addStringOption(o => o.setName('custom_duration').setDescription('Custom duration in minutes e.g. 30 (overrides the duration dropdown)').setRequired(false)),
+    .addStringOption(o => o.setName('ping').setDescription('Who to ping').setRequired(true)
+      .addChoices(
+        { name: 'No Ping', value: 'none' },
+        { name: '@here', value: 'here' },
+        { name: '@everyone', value: 'everyone' }
+      ))
+    .addStringOption(o => o.setName('custom_duration').setDescription('Custom duration in minutes e.g. 30 (overrides the duration dropdown)').setRequired(false)),
 
   // ===== REROLL =====
   new SlashCommandBuilder().setName('reroll').setDescription('Reroll a giveaway winner')
@@ -1457,7 +1421,7 @@ client.on('interactionCreate', async interaction => {
       const embed = new EmbedBuilder()
         .setTitle("Staff Promotion").setDescription(`Congratulations! ${member} has been promoted by ${interaction.user}.`)
         .addFields({ name: "Staff Member", value: `${member}`, inline: false }, { name: "New Rank", value: `${role}`, inline: false }, { name: "Reason", value: `${reason}`, inline: false })
-        .setColor("#f1c40f").setThumbnail(member.user.displayAvatarURL()).setFooter({ text: `Promotion issued by ${interaction.user.tag}` }).setTimestamp();
+        .setColor("#67b5ff").setThumbnail(member.user.displayAvatarURL()).setFooter({ text: `Promotion issued by ${interaction.user.tag}` }).setTimestamp();
       const channel = interaction.guild.channels.cache.get("1489097136929902624");
       if (channel) channel.send({ content: `${member}`, embeds: [embed] });
       return interaction.reply({ content: "✅ Promotion sent.", flags: 64 });
@@ -1477,7 +1441,7 @@ client.on('interactionCreate', async interaction => {
       const embed = new EmbedBuilder()
         .setTitle("Demotion").setDescription(`${member} has been demoted to ${demotedRole}.`)
         .addFields({ name: "Person", value: `${member}`, inline: false }, { name: "New Role", value: `${demotedRole}`, inline: false }, { name: "Reason", value: `${reason}`, inline: false })
-        .setColor("#2b2d31").setThumbnail(member.user.displayAvatarURL()).setFooter({ text: `Demoted by ${interaction.user.tag}` }).setTimestamp();
+        .setColor("#67b5ff").setThumbnail(member.user.displayAvatarURL()).setFooter({ text: `Demoted by ${interaction.user.tag}` }).setTimestamp();
       const channel = interaction.guild.channels.cache.get("1489097083029033060");
       if (channel) channel.send({ content: `${member}`, embeds: [embed] });
       return interaction.reply({ content: "✅ Demotion sent.", flags: 64 });
@@ -1528,7 +1492,7 @@ client.on('interactionCreate', async interaction => {
       const embed = new EmbedBuilder()
         .setTitle("Strike").setDescription(`${user} has been issued a strike by ${interaction.user}.`)
         .addFields({ name: "> User", value: `${user}`, inline: false }, { name: "> Punishment", value: `Strike ${strikes}`, inline: false }, { name: "> Reason", value: `${reason}`, inline: false })
-        .setColor("#2b2d31").setThumbnail(user.displayAvatarURL()).setFooter({ text: `Strike issued by ${interaction.user.tag}` }).setTimestamp();
+        .setColor("#67b5ff").setThumbnail(user.displayAvatarURL()).setFooter({ text: `Strike issued by ${interaction.user.tag}` }).setTimestamp();
       const channel = interaction.guild.channels.cache.get("1489097083029033060");
       if (channel) channel.send({ content: `${user}`, embeds: [embed] });
       await interaction.reply({ content: "✅ Strike issued.", flags: 64 });
@@ -1609,7 +1573,7 @@ client.on('interactionCreate', async interaction => {
       await member.ban({ reason });
       const embed = new EmbedBuilder()
         .setTitle(`${user.tag} | Ban`).setDescription(`Banned by ${interaction.user.tag}\nReason: ${reason}`)
-        .setColor(0xff0000).setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       interaction.guild.channels.cache.get(BAN_LOG_CHANNEL)?.send({ embeds: [embed] });
       return interaction.reply({ content: `${user.tag} banned.`, flags: 64 });
     }
@@ -1676,14 +1640,16 @@ client.on('interactionCreate', async interaction => {
 
     // CLAIM
     if (interaction.commandName === "claim") {
-      if (!interaction.member.roles.cache.has(TICKET_SUPPORT_ROLE))
+      if (!isTicketStaffMember(interaction.member))
         return interaction.reply({ content: "❌ Only ticket staff can use this.", flags: 64 });
+      if (!TICKET_VALID_CATEGORIES.includes(interaction.channel.parentId))
+        return interaction.reply({ content: "❌ This command can only be used inside a ticket channel.", flags: 64 });
       if (claimedTickets.has(interaction.channel.id)) {
         const claimerTag = claimedTickets.get(interaction.channel.id);
         return interaction.reply({ content: `❌ This ticket has already been claimed by **${claimerTag}**.`, flags: 64 });
       }
       claimedTickets.set(interaction.channel.id, interaction.user.tag);
-      const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${interaction.user}.`).setColor("#2A5CFF").setTimestamp();
+      const embed = new EmbedBuilder().setTitle("Ticket Claimed").setDescription(`This ticket has been claimed by ${interaction.user}.`).setColor("#67b5ff").setTimestamp();
       if (interaction.channel.name.startsWith("🔴-")) {
         await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
       }
@@ -1692,8 +1658,10 @@ client.on('interactionCreate', async interaction => {
 
     // CLOSE
     if (interaction.commandName === "close") {
-      if (!interaction.member.roles.cache.has(TICKET_SUPPORT_ROLE))
+      if (!isTicketStaffMember(interaction.member))
         return interaction.reply({ content: "❌ Only ticket staff can use this.", flags: 64 });
+      if (!TICKET_VALID_CATEGORIES.includes(interaction.channel.parentId))
+        return interaction.reply({ content: "❌ This command can only be used inside a ticket channel.", flags: 64 });
       const reason = interaction.options.getString("reason");
       const channel = interaction.channel;
       const channelName = channel.name;
@@ -1707,7 +1675,7 @@ client.on('interactionCreate', async interaction => {
       const transcriptEmbed = new EmbedBuilder()
         .setTitle(`${ticketType} - ${opener.tag}`)
         .setDescription(`**Closed by:** ${interaction.user}\n**Reason:** ${reason}\n\n**Transcript:**\n\`\`\`${transcript.slice(0, 3500) || "No messages found."}\`\`\``)
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       const transcriptChannel = interaction.guild.channels.cache.get("1489108262774247605");
       if (transcriptChannel) await transcriptChannel.send({ embeds: [transcriptEmbed] });
       claimedTickets.delete(channel.id);
@@ -1717,11 +1685,13 @@ client.on('interactionCreate', async interaction => {
 
     // CLOSEREQ
     if (interaction.commandName === "closereq") {
-      if (!interaction.member.roles.cache.has(TICKET_SUPPORT_ROLE))
+      if (!isTicketStaffMember(interaction.member))
         return interaction.reply({ content: "❌ Only ticket staff can use this.", flags: 64 });
+      if (!TICKET_VALID_CATEGORIES.includes(interaction.channel.parentId))
+        return interaction.reply({ content: "❌ This command can only be used inside a ticket channel.", flags: 64 });
       const embed = new EmbedBuilder()
         .setTitle("Close Request").setDescription("The ticket support would like to know whether or not you want to close the ticket.")
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`closereq_yes_${interaction.user.id}`).setLabel("Yes").setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId(`closereq_no_${interaction.user.id}`).setLabel("No").setStyle(ButtonStyle.Danger)
@@ -1731,11 +1701,10 @@ client.on('interactionCreate', async interaction => {
 
     // RENAME
     if (interaction.commandName === "rename") {
-      const allowedRoles = [TICKET_SUPPORT_ROLE, ORDER_SUPPORT_ROLE];
+      const allowedRoles = [TICKET_SUPPORT_ROLE, ORDER_SUPPORT_ROLE, TICKET_EXTRA_ROLE];
       if (!interaction.member.roles.cache.some(r => allowedRoles.includes(r.id)))
         return interaction.reply({ content: "❌ Only ticket or order support staff can use this.", flags: 64 });
-      const validCategories = [TICKET_CATEGORY, ORDER_TICKET_CATEGORY];
-      if (!validCategories.includes(interaction.channel.parentId))
+      if (!TICKET_VALID_CATEGORIES.includes(interaction.channel.parentId))
         return interaction.reply({ content: "❌ This command can only be used inside a ticket channel.", flags: 64 });
       const newName = interaction.options.getString("new-name").toLowerCase().replace(/[^a-z0-9-]/g, "");
       if (!newName) return interaction.reply({ content: "❌ Invalid name provided.", flags: 64 });
@@ -1745,7 +1714,7 @@ client.on('interactionCreate', async interaction => {
       const embed = new EmbedBuilder()
         .setTitle("Ticket Renamed")
         .setDescription(`This ticket has been renamed to **${finalName}** by ${interaction.user}.`)
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
@@ -1754,7 +1723,7 @@ client.on('interactionCreate', async interaction => {
       const target = interaction.options.getUser("player");
       const embed = new EmbedBuilder()
         .setDescription(`${target.username} | ${target.id}`)
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
@@ -1771,7 +1740,7 @@ client.on('interactionCreate', async interaction => {
         .setTitle(`New Review by ${interaction.user.username}`)
         .setDescription(`${reason}\n\nProduct: ${product}\nDesigner: ${designer}`)
         .addFields({ name: "Rating", value: rating })
-        .setColor("#2A5CFF")
+        .setColor("#67b5ff")
         .setFooter({ text: `Reviewed by ${interaction.user.tag}` })
         .setTimestamp();
       if (image) reviewEmbed.setThumbnail(image.url);
@@ -1789,7 +1758,7 @@ client.on('interactionCreate', async interaction => {
       const embed = new EmbedBuilder()
         .setTitle("Order Status")
         .addFields({ name: "Status", value: statusMap[entry.status] || "Unknown" }, { name: "Last Updated", value: entry.updatedAt })
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
@@ -1802,11 +1771,12 @@ client.on('interactionCreate', async interaction => {
       const statusMap = { paymentpending: "💳 Payment Pending", inprogress: "🔵 In Progress", completed: "✅ Completed" };
       statusData[targetUser.id] = { status: newStatus, updatedAt: new Date().toLocaleString() };
       saveStatuses();
-await targetUser.send(
-  newStatus === "completed"
-    ? `🎉 Your order is completed! Speak to your designer for more info.`
-    : `📦 Your order status has been updated!\n\n**Status:** ${statusMap[newStatus]}\n\nUse **/status** in the server to check it at any time.`
-).catch(() => {});      return interaction.reply({ content: `✅ Updated ${targetUser.tag}'s status to **${statusMap[newStatus]}**.`, flags: 64 });
+      await targetUser.send(
+        newStatus === "completed"
+          ? `🎉 Your order is completed! Speak to your designer for more info.`
+          : `📦 Your order status has been updated!\n\n**Status:** ${statusMap[newStatus]}\n\nUse **/status** in the server to check it at any time.`
+      ).catch(() => {});
+      return interaction.reply({ content: `✅ Updated ${targetUser.tag}'s status to **${statusMap[newStatus]}**.`, flags: 64 });
     }
 
     // TAX CALC
@@ -1817,7 +1787,7 @@ await targetUser.send(
       const embed = new EmbedBuilder()
         .setTitle("Tax Calculation")
         .setDescription(`Including the Roblox Tax, you would have to charge **${chargeAmount} robux**.`)
-        .setColor("#2A5CFF").setTimestamp();
+        .setColor("#67b5ff").setTimestamp();
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
@@ -1832,12 +1802,12 @@ await targetUser.send(
       const serverName = interaction.options.getString("server_name");
       const serverLink = interaction.options.getString("server_link");
       const customDuration = interaction.options.getString("custom_duration");
-const durationMinutes = customDuration ? parseInt(customDuration) : parseInt(interaction.options.getString("duration"));
-if (isNaN(durationMinutes) || durationMinutes < 1)
-  return interaction.reply({ content: "❌ Please provide a valid number of minutes in the custom duration field.", flags: 64 });
+      const durationMinutes = customDuration ? parseInt(customDuration) : parseInt(interaction.options.getString("duration"));
+      if (isNaN(durationMinutes) || durationMinutes < 1)
+        return interaction.reply({ content: "❌ Please provide a valid number of minutes in the custom duration field.", flags: 64 });
       const targetChannel = interaction.options.getChannel("channel");
-const pingChoice = interaction.options.getString("ping") ?? "none";
-const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "here" ? "@here" : null;
+      const pingChoice = interaction.options.getString("ping") ?? "none";
+      const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "here" ? "@here" : null;
 
       if (targetChannel.type !== ChannelType.GuildText)
         return interaction.reply({ content: "❌ Please select a text channel.", flags: 64 });
@@ -1868,12 +1838,12 @@ const pingContent = pingChoice === "everyone" ? "@everyone" : pingChoice === "he
       await interaction.deferReply({ flags: 64 });
 
       if (pingContent) {
-  const pingMsg = await targetChannel.send(pingContent);
-  await pingMsg.delete().catch(() => {});
-}
+        const pingMsg = await targetChannel.send(pingContent);
+        await pingMsg.delete().catch(() => {});
+      }
 
-const giveawayMessage = await targetChannel.send({
-  flags: 32768,
+      const giveawayMessage = await targetChannel.send({
+        flags: 32768,
         components: [
           {
             type: 17,
@@ -1885,7 +1855,8 @@ const giveawayMessage = await targetChannel.send({
               { type: 14 },
               {
                 type: 10,
-            content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** ${durationMinutes / 1440} day${durationMinutes / 1440 !== 1 ? "s" : ""}`              },
+                content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Duration:** ${durationMinutes / 1440} day${durationMinutes / 1440 !== 1 ? "s" : ""}`
+              },
               { type: 14 },
               {
                 type: 10,
@@ -2038,7 +2009,7 @@ const giveawayMessage = await targetChannel.send({
         components: [
           { type: 10, content: `## ${giveaway.title}${giveaway.ping ? `\n-# ${giveaway.ping}` : ""}` },
           { type: 14 },
-{ type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${(() => { const ms = giveaway.endsAt - Date.now(); if (ms <= 0) return "Ended"; const d = Math.floor(ms / 86400000); const h = Math.floor((ms % 86400000) / 3600000); const m = Math.floor((ms % 3600000) / 60000); if (d > 0) return d + " Day" + (d !== 1 ? "s" : ""); if (h > 0) return h + " Hour" + (h !== 1 ? "s" : ""); return m + " Minute" + (m !== 1 ? "s" : ""); })()}` },
+          { type: 10, content: `• <:link_new:1492372669419487373> **Server:** ${giveaway.serverLink}\n• <:robux:1489837725166080102> **Prize:** ${giveaway.prize}\n• <:clockk:1492371699730087987> **Ends In:** ${(() => { const ms = giveaway.endsAt - Date.now(); if (ms <= 0) return "Ended"; const d = Math.floor(ms / 86400000); const h = Math.floor((ms % 86400000) / 3600000); const m = Math.floor((ms % 3600000) / 60000); if (d > 0) return d + " Day" + (d !== 1 ? "s" : ""); if (h > 0) return h + " Hour" + (h !== 1 ? "s" : ""); return m + " Minute" + (m !== 1 ? "s" : ""); })()}` },
           { type: 10, content: `In order to join this giveaway, you need to be in **${giveaway.serverName}** to win!\nWinner(s): TBD` },
           { type: 14 },
           { type: 1, components: [
@@ -2062,84 +2033,63 @@ const giveawayMessage = await targetChannel.send({
     const userId = parts[2];
     const targetUser = await client.users.fetch(userId).catch(() => null);
     if (action === "approve") {
-  const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      let ticketChannel = null;
+      if (member) {
+        const cleanName = member.user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
+        ticketChannel = await interaction.guild.channels.create({
+          name: `🟢-designer-p2-${cleanName}`,
+          type: ChannelType.GuildText,
+          parent: TICKET_CATEGORY,
+          permissionOverwrites: [
+            { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            { id: member.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+            { id: "1492618251535126608", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+            { id: "1489370034764779600", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+          ]
+        }).catch(() => null);
 
-  let ticketChannel = null;
+        if (ticketChannel) {
+          await ticketChannel.send(`<@&1492618251535126608> <@&1489370034764779600>`);
+          const ticketEmbed = new EmbedBuilder()
+            .setTitle("Designer Application — Part 2")
+            .setDescription(
+              `Welcome ${member}, congratulations on passing the first stage of the designer application!\n\n` +
+              `A member of management will be with you shortly to conduct your interview. ` +
+              `Please be patient and have any additional portfolio pieces ready if needed.`
+            )
+            .addFields({ name: "Reason", value: "Designer Application — Part 2" })
+            .setColor("#67b5ff")
+            .setFooter({ text: `Application approved by ${interaction.user.tag}` })
+            .setTimestamp();
+          const buttons = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claim").setStyle(ButtonStyle.Success)
+          );
+          await ticketChannel.send({ embeds: [ticketEmbed], components: [buttons] });
+        }
 
-  if (member) {
-    // ── WHY: We build the channel name the same way your existing ticket system does,
-    //    using their username cleaned to only letters/numbers so Discord accepts it.
-    const cleanName = member.user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (ticketChannel) {
+          await targetUser?.send(
+            `Congratulations! Your designer application has been approved and you have progressed to **Stage 2**.\n\n` +
+            `A management ticket has been opened for you in **Vital** — head over to ${ticketChannel} to begin your interview. ` +
+            `Please be patient while a member of management gets with you.`
+          ).catch(() => {});
+        } else {
+          await targetUser?.send(
+            `Congratulations! Your designer application has been approved and you have progressed to **Stage 2**.\n\n` +
+            `Please head to **Vital** and open a Management ticket to begin your interview.`
+          ).catch(() => {});
+        }
+      }
 
-    // ── WHY: We set up permission overwrites so only the applicant,
-    //    management roles, and the bot can see this channel.
-    //    This mirrors exactly what your mgmt_ticket flow already does.
-    ticketChannel = await interaction.guild.channels.create({
-      name: `🟢-designer-p2-${cleanName}`,
-      type: ChannelType.GuildText,
-      parent: TICKET_CATEGORY,
-      permissionOverwrites: [
-        { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-        { id: member.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: "1492618251535126608", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-        { id: "1489370034764779600", allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-      ]
-    }).catch(() => null);
-
-    if (ticketChannel) {
-      // ── WHY: We ping the management roles first (separate message) so they
-      //    get a notification, same pattern as your existing ticket system.
-      await ticketChannel.send(`<@&1492618251535126608> <@&1489370034764779600>`);
-
-      const ticketEmbed = new EmbedBuilder()
-        .setTitle("Designer Application — Part 2")
-        .setDescription(
-          `Welcome ${member}, congratulations on passing the first stage of the designer application!\n\n` +
-          `A member of management will be with you shortly to conduct your interview. ` +
-          `Please be patient and have any additional portfolio pieces ready if needed.`
-        )
-        .addFields({ name: "Reason", value: "Designer Application — Part 2" })
-        .setColor("#2A5CFF")
-        .setFooter({ text: `Application approved by ${interaction.user.tag}` })
-        .setTimestamp();
-
-      // ── WHY: We add close/claim buttons so staff can manage this ticket
-      //    exactly like any other ticket in your system.
-      const buttons = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claim").setStyle(ButtonStyle.Success)
-      );
-
-      await ticketChannel.send({ embeds: [ticketEmbed], components: [buttons] });
+      return interaction.update({
+        content: ticketChannel
+          ? `✅ Approved by ${interaction.user.tag} — ticket created: ${ticketChannel}`
+          : `✅ Approved by ${interaction.user.tag} — ticket creation failed, please create manually`,
+        components: []
+      });
     }
-
-    // ── WHY: We only mention the ticket channel if it was actually created.
-    //    If something went wrong with channel creation, we fall back to a
-    //    generic message so the applicant isn't left with nothing.
-    if (ticketChannel) {
-      await targetUser?.send(
-        `Congratulations! Your designer application has been approved and you have progressed to **Stage 2**.\n\n` +
-        `A management ticket has been opened for you in **DevHub** — head over to ${ticketChannel} to begin your interview. ` +
-        `Please be patient while a member of management gets with you.`
-      ).catch(() => {});
-    } else {
-      await targetUser?.send(
-        `Congratulations! Your designer application has been approved and you have progressed to **Stage 2**.\n\n` +
-        `Please head to **DevHub** and open a Management ticket to begin your interview.`
-      ).catch(() => {});
-    }
-  }
-
-  // ── WHY: interaction.update() edits the original application message in the
-  //    log channel, replacing the approve/deny buttons with a status line.
-  //    We include the ticket channel in the update if it was created.
-  return interaction.update({
-    content: ticketChannel
-      ? `✅ Approved by ${interaction.user.tag} — ticket created: ${ticketChannel}`
-      : `✅ Approved by ${interaction.user.tag} — ticket creation failed, please create manually`,
-    components: []
-  });
-}
     if (action === "deny") {
       applicationCooldowns.set(userId, { deniedAt: Date.now() });
       saveCooldowns();
@@ -2151,8 +2101,8 @@ const giveawayMessage = await targetChannel.send({
   // ===== BOT APPROVAL =====
   if (interaction.isButton() && interaction.customId.startsWith("bot_")) {
     const BOT_APPROVAL_ROLES = [...MOD_ROLE_ID, "1489370034764779600"];
-const isMod = interaction.member.roles.cache.some(role => BOT_APPROVAL_ROLES.includes(role.id));
-if (!isMod) return interaction.reply({ content: "❌ Only moderators can use this.", flags: 64 });
+    const isMod = interaction.member.roles.cache.some(role => BOT_APPROVAL_ROLES.includes(role.id));
+    if (!isMod) return interaction.reply({ content: "❌ Only moderators can use this.", flags: 64 });
     const [action, type, userId] = interaction.customId.split("_");
     if (action === "bot" && type === "deny") {
       const member = await interaction.guild.members.fetch(userId).catch(() => null);
@@ -2169,7 +2119,7 @@ if (!isMod) return interaction.reply({ content: "❌ Only moderators can use thi
 
   // ===== CLAIM TICKET (button) =====
   if (interaction.isButton() && interaction.customId === "claim_ticket") {
-    if (!interaction.member.roles.cache.has(TICKET_SUPPORT_ROLE))
+    if (!isTicketStaffMember(interaction.member))
       return interaction.reply({ content: "❌ Only ticket staff can claim tickets.", flags: 64 });
     if (claimedTickets.has(interaction.channel.id)) {
       const claimerTag = claimedTickets.get(interaction.channel.id);
@@ -2179,7 +2129,7 @@ if (!isMod) return interaction.reply({ content: "❌ Only moderators can use thi
     const claimEmbed = new EmbedBuilder()
       .setTitle("Ticket Claimed")
       .setDescription(`This ticket has been claimed by ${interaction.user}.`)
-      .setColor("#2A5CFF").setTimestamp();
+      .setColor("#67b5ff").setTimestamp();
     if (interaction.channel.name.startsWith("🔴-")) {
       await interaction.channel.setName(`🟢-${interaction.channel.name.replace("🔴-", "")}`).catch(() => {});
     }
@@ -2227,7 +2177,7 @@ if (!isMod) return interaction.reply({ content: "❌ Only moderators can use thi
 
   // ===== CLOSE TICKET (button) =====
   if (interaction.isButton() && interaction.customId === "close_ticket") {
-    if (!interaction.member.roles.cache.has(TICKET_SUPPORT_ROLE))
+    if (!isTicketStaffMember(interaction.member))
       return interaction.reply({ content: "❌ Only ticket staff can close tickets.", flags: 64 });
     const channel = interaction.channel;
     const channelName = channel.name;
@@ -2241,7 +2191,7 @@ if (!isMod) return interaction.reply({ content: "❌ Only moderators can use thi
     const transcriptEmbed = new EmbedBuilder()
       .setTitle(`${ticketType} - ${opener.tag}`)
       .setDescription(`**Closed by:** ${interaction.user}\n**Reason:** Button close\n\n**Transcript:**\n\`\`\`${transcript.slice(0, 3500) || "No messages found."}\`\`\``)
-      .setColor("#2A5CFF").setTimestamp();
+      .setColor("#67b5ff").setTimestamp();
     const transcriptChannel = interaction.guild.channels.cache.get("1489108262774247605");
     if (transcriptChannel) await transcriptChannel.send({ embeds: [transcriptEmbed] });
     claimedTickets.delete(channel.id);
@@ -2279,7 +2229,7 @@ if (!isMod) return interaction.reply({ content: "❌ Only moderators can use thi
         { name: "Order Explanation", value: orderExplain, inline: false },
         { name: "Agreed to Terms", value: orderAgree, inline: false }
       )
-      .setColor("#2A5CFF")
+      .setColor("#67b5ff")
       .setFooter({ text: `Order by ${user.tag}` })
       .setTimestamp();
     const buttons = new ActionRowBuilder().addComponents(
@@ -2300,7 +2250,8 @@ if (!isMod) return interaction.reply({ content: "❌ Only moderators can use thi
     const cleanName = user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
     let name, title, ticketDescription;
     if (type === "general_ticket") { name = `🔴-general-${cleanName}`; title = "General Support"; ticketDescription = "Thank you for opening a ticket, a staff member will be with you shortly. If you could provide the reason why you opened it while waiting that would be great, thanks."; }
-    if (type === "ia_ticket") { name = `🔴-os-${cleanName}`; title = "Oversight Support"; ticketDescription = "Thank you for opening a ticket, an oversight member will be with you shortly. Please explain why you opened the ticket while waiting."; }    if (type === "mgmt_ticket") { name = `🔴-mgmt-${cleanName}`; title = "Management Support"; ticketDescription = "Thank you for opening a ticket, a HR member will be with you shortly. Please explain why you opened the ticket while waiting."; }
+    if (type === "ia_ticket") { name = `🔴-os-${cleanName}`; title = "Oversight Support"; ticketDescription = "Thank you for opening a ticket, an oversight member will be with you shortly. Please explain why you opened the ticket while waiting."; }
+    if (type === "mgmt_ticket") { name = `🔴-mgmt-${cleanName}`; title = "Management Support"; ticketDescription = "Thank you for opening a ticket, a HR member will be with you shortly. Please explain why you opened the ticket while waiting."; }
     const ticketOverwrites = [
       { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
       { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
@@ -2324,7 +2275,7 @@ if (!isMod) return interaction.reply({ content: "❌ Only moderators can use thi
       .setTitle(title)
       .setDescription(ticketDescription)
       .addFields({ name: "Reason", value: reason })
-      .setColor("#2A5CFF").setTimestamp();
+      .setColor("#67b5ff").setTimestamp();
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("close_ticket").setLabel("Close").setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId("claim_ticket").setLabel("Claim").setStyle(ButtonStyle.Success)
