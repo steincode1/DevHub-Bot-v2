@@ -381,7 +381,7 @@ client.once("clientReady", async () => {
             },
             {
               type: 10,
-              content: "# <:VITAL:1499993149597028402> Server Support\n\n> Welcome to the Support Dashboard! Here you can open a ticket for General, IA, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason."
+              content: "# <:VITAL:1499993149597028402> Server Support\n\n> Welcome to the Support Dashboard! Here you can open a ticket for General, Oversight, and Management. Trolling or falsely opening tickets may result in you being punished. Please avoid pinging staff with-out valid reason."
             },
             {
               type: 14
